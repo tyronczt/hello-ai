@@ -1,2 +1,6 @@
 /.idea
 target
+/product/pdf-export/src/main/resources/application.yml
+/agent/agentscope/.classpath
+/agent/agentscope/.project
+/.vscode/settings.json
