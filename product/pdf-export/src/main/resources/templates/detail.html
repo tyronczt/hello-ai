@@ -103,7 +103,7 @@
                             <button type="button" class="btn btn-primary" id="convertBtn" 
                                     th:disabled="${template.status == 'CONVERTING'}"
                                     onclick="convertTemplate()">
-                                <i class="fas fa-magic me-1"></i>AI转换为FO
+                                <i class="fas fa-magic me-1"></i>AI 转换为 FO
                             </button>
                             <button type="button" class="btn btn-success" id="saveBtn" 
                                     th:disabled="${template.foContent == null}"
@@ -111,8 +111,13 @@
                                 <i class="fas fa-save me-1"></i>保存模板
                             </button>
                             <a th:if="${template.status == 'CONVERTED'}" 
+                               th:href="@{/template/{id}/preview(id=${template.id})}" 
+                               class="btn btn-info ms-auto">
+                                <i class="fas fa-eye me-1"></i>FO 预览
+                            </a>
+                            <a th:if="${template.status == 'CONVERTED'}" 
                                th:href="@{/export/{id}(id=${template.id})}" 
-                               class="btn btn-success ms-auto">
+                               class="btn btn-success">
                                 <i class="fas fa-file-export me-1"></i>进入导出
                             </a>
                         </div>

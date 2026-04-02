@@ -245,7 +245,7 @@ public class TemplateApiController {
     }
 
     /**
-     * 导出PDF
+     * 导出 PDF
      */
     @PostMapping("/{id}/export")
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id, @RequestBody Map<String, Object> data) {
@@ -254,45 +254,65 @@ public class TemplateApiController {
             if (template == null || template.getFoContent() == null) {
                 return ResponseEntity.notFound().build();
             }
-            
-            // 1. 保存导出记录
-            PdfRecord record = new PdfRecord();
-            record.setTemplateId(id);
-            record.setDataJson(JSON.toJSONString(data.get("formData")));
-            recordMapper.insert(record);
-            
-            // 2. 填充数据并渲染PDF
+                
+            // 1. 提取模板中的所有占位符
+            List<String> placeholders = pdfExportService.extractPlaceholders(template.getFoContent());
+                
+            // 2. 获取表单数据并检查是否所有变量都被替换
             @SuppressWarnings("unchecked")
             Map<String, Object> formData = (Map<String, Object>) data.get("formData");
+            if (formData == null) {
+                formData = new java.util.HashMap<>();
+            }
+                
+            // 3. 检查是否有未替换的变量
+            List<String> missingVariables = new java.util.ArrayList<>();
+            for (String placeholder : placeholders) {
+                if (!formData.containsKey(placeholder)) {
+                    missingVariables.add(placeholder);
+                }
+            }
+                
+            if (!missingVariables.isEmpty()) {
+                throw new RuntimeException("AI 转换失败：Not all variables were replaced in the template. Missing variable names are: " + missingVariables);
+            }
+                
+            // 4. 保存导出记录
+            PdfRecord record = new PdfRecord();
+            record.setTemplateId(id);
+            record.setDataJson(JSON.toJSONString(formData));
+            recordMapper.insert(record);
+                
+            // 5. 填充数据并渲染 PDF
             byte[] pdfBytes = pdfExportService.fillAndRender(template.getFoContent(), formData);
-            
-            // 3. 上传PDF到MinIO
+                
+            // 6. 上传 PDF 到 MinIO
             String pdfKey = "exports/" + UUID.randomUUID() + "-" + template.getName() + ".pdf";
             minioService.uploadFile(
                     new java.io.ByteArrayInputStream(pdfBytes),
                     template.getName() + ".pdf",
                     "application/pdf"
             );
-            
-            // 4. 更新记录
+                
+            // 7. 更新记录
             record.setExportedPdfKey(pdfKey);
             recordMapper.updateById(record);
-            
-            // 5. 返回PDF
+                
+            // 8. 返回 PDF
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", template.getName() + ".pdf");
-            
+                
             return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
-            
+                
         } catch (Exception e) {
-            log.error("导出PDF失败", e);
+            log.error("导出 PDF 失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * 下载导出记录PDF
+     * 下载导出记录 PDF
      */
     @GetMapping("/record/{recordId}/download")
     public ResponseEntity<byte[]> downloadRecord(@PathVariable Long recordId) {
@@ -317,6 +337,60 @@ public class TemplateApiController {
         } catch (Exception e) {
             log.error("下载失败", e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * FO 模板实时预览 - 生成 PDF
+     */
+    @PostMapping("/{id}/preview")
+    public ResponseEntity<byte[]> previewFo(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        try {
+            log.info("开始预览 PDF，模板 ID: {}", id);
+            
+            PdfTemplate template = templateMapper.selectById(id);
+            if (template == null) {
+                log.warn("模板不存在，ID: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (template.getFoContent() == null) {
+                log.warn("模板 FO 内容为空，ID: {}", id);
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            // 优先使用前端传来的 foContent，如果没有则使用数据库中的
+            String foContent = (String) body.get("foContent");
+            if (foContent == null || foContent.trim().isEmpty()) {
+                log.info("使用数据库中的 FO 内容");
+                foContent = template.getFoContent();
+            } else {
+                log.info("使用前端传来的 FO 内容，长度：{}", foContent.length());
+            }
+            
+            // 获取数据
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) body.get("data");
+            
+            if (data == null) {
+                data = new java.util.HashMap<>();
+            }
+            
+            log.info("填充数据，字段数：{}", data.size());
+            
+            // 填充数据并渲染 PDF
+            byte[] pdfBytes = pdfExportService.fillAndRender(foContent, data);
+            
+            log.info("PDF 生成成功，大小：{} bytes", pdfBytes.length);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+            
+        } catch (Exception e) {
+            log.error("预览失败，模板 ID: {}", id, e);
+            return ResponseEntity.internalServerError().body(null);
         }
     }
 }

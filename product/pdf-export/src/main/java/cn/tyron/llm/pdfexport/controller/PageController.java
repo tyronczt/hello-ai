@@ -62,6 +62,17 @@ public class PageController {
         return "detail";
     }
 
+    @GetMapping("/template/{id}/preview")
+    public String previewPage(@PathVariable Long id, Model model) {
+        PdfTemplate template = templateMapper.selectById(id);
+        if (template == null || template.getFoContent() == null) {
+            return "redirect:/template/" + id;
+        }
+        
+        model.addAttribute("template", template);
+        return "preview";
+    }
+
     @GetMapping("/export/{id}")
     public String exportPage(@PathVariable Long id, Model model) {
         PdfTemplate template = templateMapper.selectById(id);

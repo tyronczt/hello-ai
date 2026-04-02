@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${template.name} + ' - FO 模板预览'">FO 模板预览</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f5f7fa; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .btn-primary { background: #0d6efd; border: none; border-radius: 8px; }
+        .badge-placeholder { background: #ffc107; color: #000; }
+        .form-input-highlight { border: 2px solid #0d6efd; background: #e7f1ff; }
+        .pdf-preview-container { background: #fff; border-radius: 8px; min-height: 600px; }
+        .placeholder-tag { display: inline-block; padding: 4px 8px; margin: 2px; background: #ffc107; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .placeholder-tag:hover { background: #ffca2c; }
+        .placeholder-tag.filled { background: #198754; color: white; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/detail/{id}(id=${template.id})}">
+                <i class="fas fa-arrow-left me-2"></i>返回详情
+            </a>
+            <span class="navbar-text text-white">
+                <i class="fas fa-eye me-1"></i>
+                <span th:text="${template.name} + ' - FO 模板预览'"></span>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- 左侧：占位符输入 -->
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <i class="fas fa-tags me-2"></i>占位符列表
+                        <span class="badge bg-warning ms-2" id="placeholderCount">0</span>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        <div id="placeholderList">
+                            <p class="text-muted text-center">暂无占位符</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-keyboard me-2"></i>数据输入
+                    </div>
+                    <div class="card-body">
+                        <form id="dataForm">
+                            <div id="inputFields">
+                                <p class="text-muted text-center">请先在右侧点击占位符</p>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-3 d-grid gap-2">
+                            <button type="button" class="btn btn-primary" onclick="previewPdf()">
+                                <i class="fas fa-play me-2"></i>生成 PDF 预览
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                <i class="fas fa-redo me-2"></i>重置所有
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间：FO 模板内容（只读） -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-code me-2"></i>FO 模板内容
+                        <span class="badge bg-info ms-2">只读</span>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="foContent" class="form-control" rows="30" readonly 
+                                  th:text="${template.foContent ?: ''}"
+                                  style="font-family: 'Consolas', 'Monaco', monospace; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：PDF 预览 -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-file-pdf me-2"></i>PDF 预览
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="pdf-preview-container">
+                            <iframe id="pdfPreview" width="100%" height="600" style="border: none;" 
+                                    src="about:blank"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading 遮罩 -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="text-center text-white">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <span>正在生成 PDF，请稍候...</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        const templateId = [[${template.id}]];
+        const foContent = [[${template.foContent} ?: '']];
+        const placeholders = [];
+        const formData = {};
+        
+        // 提取占位符
+        function extractPlaceholders(content) {
+            const regex = /\$\{([^}]+)\}/g;
+            const matches = [];
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                if (!matches.includes(match[1])) {
+                    matches.push(match[1]);
+                }
+            }
+            return matches;
+        }
+        
+        // 初始化占位符列表
+        function initPlaceholders() {
+            placeholders.length = 0;
+            const extracted = extractPlaceholders(foContent);
+            placeholders.push(...extracted);
+            
+            document.getElementById('placeholderCount').textContent = placeholders.length;
+            
+            const listDiv = document.getElementById('placeholderList');
+            if (placeholders.length === 0) {
+                listDiv.innerHTML = '<p class="text-muted text-center">暂无占位符</p>';
+                return;
+            }
+            
+            listDiv.innerHTML = '';
+            placeholders.forEach(ph => {
+                const tag = document.createElement('span');
+                tag.className = 'placeholder-tag';
+                tag.textContent = '${' + ph + '}';
+                tag.onclick = () => addInputField(ph);
+                listDiv.appendChild(tag);
+            });
+        }
+        
+        // 添加输入字段
+        function addInputField(placeholderName) {
+            if (formData.hasOwnProperty(placeholderName)) {
+                alert('该占位符已添加');
+                return;
+            }
+            
+            const inputDiv = document.createElement('div');
+            inputDiv.className = 'mb-3';
+            inputDiv.innerHTML = `
+                <label class="form-label">${placeholderName}</label>
+                <input type="text" class="form-control form-input-highlight" 
+                       id="input_${placeholderName}" 
+                       placeholder="请输入 ${placeholderName}"
+                       onchange="updateFormData('${placeholderName}')">
+            `;
+            
+            document.getElementById('inputFields').appendChild(inputDiv);
+            formData[placeholderName] = '';
+        }
+        
+        // 更新表单数据
+        function updateFormData(placeholderName) {
+            const input = document.getElementById('input_' + placeholderName);
+            formData[placeholderName] = input.value;
+            
+            // 更新标签状态
+            const tags = document.querySelectorAll('.placeholder-tag');
+            tags.forEach(tag => {
+                if (tag.textContent === '${' + placeholderName + '}') {
+                    if (input.value.trim()) {
+                        tag.classList.add('filled');
+                    } else {
+                        tag.classList.remove('filled');
+                    }
+                }
+            });
+        }
+        
+        // 预览 PDF
+        async function previewPdf() {
+            const loading = document.getElementById('loadingOverlay');
+            const pdfFrame = document.getElementById('pdfPreview');
+            
+            try {
+                loading.style.display = 'flex';
+                
+                const response = await fetch(`/api/template/${templateId}/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        foContent: foContent,
+                        data: formData
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+                
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                pdfFrame.src = url;
+                
+            } catch (error) {
+                alert('PDF 生成失败：' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        // 重置表单
+        function resetForm() {
+            document.getElementById('inputFields').innerHTML = '<p class="text-muted text-center">请先在右侧点击占位符</p>';
+            document.getElementById('pdfPreview').src = 'about:blank';
+            
+            // 重置标签状态
+            const tags = document.querySelectorAll('.placeholder-tag');
+            tags.forEach(tag => tag.classList.remove('filled'));
+            
+            // 清空数据
+            for (const key in formData) {
+                delete formData[key];
+            }
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            initPlaceholders();
+        };
+    </script>
+</body>
+</html>
