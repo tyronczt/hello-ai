@@ -25,9 +25,9 @@ public class QuickStart {
                 .name("Jarvis")
                 .sysPrompt("你是一个名为 Jarvis 的助手")
                 .model(OpenAIChatModel.builder()
-                        .baseUrl("https://free.9e.nz")
-                        .apiKey("sk-136d55f8b8f04b118588fc8d29f6932c002cd23ea626a34872e62975987e0905")
-                        .modelName("GPT-5 Codex") // MiniMax M2.7 模型
+                        .baseUrl("https://api.aigcly.top/v1")
+                        .apiKey("sk-KNXGOMFJXgeqrd4VHLbZ86oNkHZS5hTFMNo0yTXk5gLaNAVw")
+                        .modelName("gpt-5.4")
                         .build())
                 .toolkit(toolkit)
                 .build();
