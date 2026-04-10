@@ -5,15 +5,13 @@
 ## 📚 核心模块
 
 ### 🤖 大模型
-- [LLM 基础理论与应用实践](llm-base/README.md)
-- 从入门到精通的大模型学习路径
+[LLM 基础理论与应用实践](llm-base/README.md)
 
 ### 🔗 MCP (Model Context Protocol)
 - 大模型上下文协议学习与探索
 
 ### 🧠 RAG (检索增强生成)
-- [RAG 技术全栈指南](rag/README.md)
-- 从理论到实践的完整学习路径
+[RAG从理论到实践的完整学习路径](rag/README.md)
 
 ### 🎯 Agent (智能体)
 #### AgentScope
