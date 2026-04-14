@@ -1,265 +1,296 @@
 package cn.tyron.llm.chunking;
 
+import cn.tyron.llm.chunking.strategy.ChunkingStrategy;
+import cn.tyron.llm.chunking.strategy.ChunkingStrategy.ChunkingConfig;
+import cn.tyron.llm.chunking.strategy.ChunkingStrategyFactory;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.List;
 
 /**
  * 文本分块服务
- * 演示多种文本分块策略：固定大小、递归、Token级别、语义、文档结构、Agentic
+ * 使用策略模式支持多种文本分块策略
+ * 
+ * 支持的分块策略：
+ * - FIXED_SIZE: 固定大小分块
+ * - OVERLAPPING: 重叠分块
+ * - RECURSIVE: 递归分块（默认）
+ * - TOKEN: Token级别分块
+ * - SEMANTIC: 语义分块
+ * - SLIDING_WINDOW: 滑动窗口分块
+ * - DOCUMENT_BASED: 文档结构分块
+ * - AGENTIC: 智能体分块
+ * - HYBRID: 混合分块
+ * - CONTEXT_ENRICHED: 上下文增强分块
+ * - SUB_DOCUMENT: 子文档分块
  */
 @Service
 public class TextChunkingService {
 
+    private final ChunkingStrategyFactory strategyFactory;
     private final EmbeddingModel embeddingModel;
 
-    public TextChunkingService(EmbeddingModel embeddingModel) {
+    public TextChunkingService(ChunkingStrategyFactory strategyFactory, 
+                               EmbeddingModel embeddingModel) {
+        this.strategyFactory = strategyFactory;
         this.embeddingModel = embeddingModel;
     }
 
-    // ========== 1. 固定大小分块（按字符） ==========
+    // ==================== 通用分块方法 ====================
+
+    /**
+     * 使用指定策略进行分块
+     *
+     * @param text 待分块文本
+     * @param strategyName 策略名称
+     * @param config 分块配置
+     * @return 分块后的文本列表
+     */
+    public List<String> chunk(String text, String strategyName, ChunkingConfig config) {
+        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyName);
+        return strategy.chunk(text, config);
+    }
+
+    /**
+     * 使用指定策略进行分块（返回 Document 对象）
+     *
+     * @param text 待分块文本
+     * @param strategyName 策略名称
+     * @param config 分块配置
+     * @return 分块后的 Document 列表
+     */
+    public List<Document> chunkToDocuments(String text, String strategyName, ChunkingConfig config) {
+        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyName);
+        return strategy.chunkToDocuments(text, config);
+    }
+
+    /**
+     * 使用默认策略（递归分块）进行分块
+     *
+     * @param text 待分块文本
+     * @param config 分块配置
+     * @return 分块后的文本列表
+     */
+    public List<String> chunk(String text, ChunkingConfig config) {
+        return chunk(text, "RECURSIVE", config);
+    }
+
+    // ==================== 便捷方法：固定大小分块 ====================
+
+    /**
+     * 固定大小分块
+     *
+     * @param text 待分块文本
+     * @param chunkSize 块大小
+     * @return 分块后的文本列表
+     */
+    public List<String> fixedSizeChunk(String text, int chunkSize) {
+        ChunkingConfig config = ChunkingConfig.fixedSizeConfig(chunkSize, 0);
+        return chunk(text, "FIXED_SIZE", config);
+    }
+
+    /**
+     * 固定大小分块（带重叠）
+     *
+     * @param text 待分块文本
+     * @param chunkSize 块大小
+     * @param overlap 重叠大小
+     * @return 分块后的文本列表
+     */
     public List<String> fixedSizeChunk(String text, int chunkSize, int overlap) {
-        List<String> chunks = new ArrayList<>();
-        if (text == null || text.isEmpty()) return chunks;
-
-        int step = chunkSize - overlap;
-        if (step <= 0) throw new IllegalArgumentException("overlap must be less than chunkSize");
-
-        int start = 0;
-        while (start < text.length()) {
-            int end = Math.min(start + chunkSize, text.length());
-            chunks.add(text.substring(start, end));
-            start += step;
-        }
-        return chunks;
+        ChunkingConfig config = ChunkingConfig.fixedSizeConfig(chunkSize, overlap);
+        return chunk(text, "OVERLAPPING", config);
     }
 
-    // ========== 2. 递归分块（按分隔符优先级） ==========
-    private static final List<String> SEPARATORS = Arrays.asList("\n\n", "\n", "。", ". ", " ");
+    // ==================== 便捷方法：递归分块 ====================
 
+    /**
+     * 递归分块
+     *
+     * @param text 待分块文本
+     * @param maxChunkSize 最大块大小
+     * @return 分块后的文本列表
+     */
     public List<String> recursiveChunk(String text, int maxChunkSize) {
-        List<String> result = new ArrayList<>();
-        if (text.length() <= maxChunkSize) {
-            result.add(text);
-            return result;
-        }
-
-        String bestSeparator = null;
-        int bestIndex = -1;
-        for (String sep : SEPARATORS) {
-            int index = text.indexOf(sep);
-            if (index > 0 && index < maxChunkSize) {
-                bestSeparator = sep;
-                bestIndex = index;
-                break;
-            }
-        }
-
-        if (bestSeparator == null) {
-            result.add(text.substring(0, maxChunkSize));
-            result.addAll(recursiveChunk(text.substring(maxChunkSize), maxChunkSize));
-        } else {
-            String first = text.substring(0, bestIndex + bestSeparator.length());
-            String remaining = text.substring(bestIndex + bestSeparator.length());
-            result.add(first);
-            result.addAll(recursiveChunk(remaining, maxChunkSize));
-        }
-        return result;
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(maxChunkSize);
+        return chunk(text, "RECURSIVE", config);
     }
 
-    // ========== 3. Token 级别分块 ==========
+    // ==================== 便捷方法：Token 分块 ====================
+
+    /**
+     * Token 级别分块
+     *
+     * @param text 待分块文本
+     * @param chunkSize Token 数量
+     * @return 分块后的文本列表
+     */
     public List<String> tokenChunk(String text, int chunkSize) {
-        if (text == null || text.isEmpty()) return Collections.emptyList();
-
-        org.springframework.ai.transformer.splitter.TokenTextSplitter splitter =
-                new org.springframework.ai.transformer.splitter.TokenTextSplitter(
-                        chunkSize, 50, 20, 100, true);
-
-        org.springframework.ai.document.Document document = new org.springframework.ai.document.Document(text);
-        List<org.springframework.ai.document.Document> splitDocs =
-                splitter.split(Collections.singletonList(document));
-
-        return splitDocs.stream()
-                .map(org.springframework.ai.document.Document::getText)
-                .collect(java.util.stream.Collectors.toList());
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(chunkSize);
+        return chunk(text, "TOKEN", config);
     }
 
+    /**
+     * Token 级别分块（带重叠）
+     *
+     * @param text 待分块文本
+     * @param chunkSize Token 数量
+     * @param chunkOverlap 重叠 Token 数量
+     * @return 分块后的文本列表
+     */
     public List<String> tokenChunk(String text, int chunkSize, int chunkOverlap) {
-        List<String> baseChunks = tokenChunk(text, chunkSize);
-        if (baseChunks.size() <= 1) return baseChunks;
-
-        List<String> result = new ArrayList<>();
-        result.add(baseChunks.get(0));
-
-        for (int i = 1; i < baseChunks.size(); i++) {
-            String previous = baseChunks.get(i - 1);
-            String current = baseChunks.get(i);
-            String overlapText = extractOverlap(previous, chunkOverlap);
-            result.add(overlapText + current);
-        }
-        return result;
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(chunkSize);
+        config.setChunkOverlap(chunkOverlap);
+        return chunk(text, "TOKEN", config);
     }
 
-    private String extractOverlap(String text, int overlapTokens) {
-        int charEstimate = overlapTokens * 4;
-        if (text.length() <= charEstimate) return text;
-        return text.substring(Math.max(0, text.length() - charEstimate));
-    }
+    // ==================== 便捷方法：语义分块 ====================
 
-    // ========== 4. 语义分块（基于 Embedding） ==========
+    /**
+     * 语义分块
+     *
+     * @param text 待分块文本
+     * @param similarityThreshold 相似度阈值
+     * @param maxTokensPerChunk 每块最大 Token 数
+     * @return 分块后的文本列表
+     */
     public List<String> semanticChunk(String text, double similarityThreshold, int maxTokensPerChunk) {
-        List<String> sentences = splitIntoSentences(text);
-        if (sentences.isEmpty()) return Collections.emptyList();
-
-        List<String> chunks = new ArrayList<>();
-        StringBuilder currentChunk = new StringBuilder();
-        int currentTokenCount = 0;
-
-        for (int i = 0; i < sentences.size(); i++) {
-            String sentence = sentences.get(i);
-            int sentenceTokens = estimateTokenCount(sentence);
-
-            if (currentTokenCount + sentenceTokens > maxTokensPerChunk && currentChunk.length() > 0) {
-                chunks.add(currentChunk.toString().trim());
-                currentChunk = new StringBuilder();
-                currentTokenCount = 0;
-            }
-
-            if (currentChunk.length() > 0 && i > 0) {
-                double similarity = calculateSentenceSimilarity(sentences.get(i - 1), sentence);
-                if (similarity < similarityThreshold) {
-                    chunks.add(currentChunk.toString().trim());
-                    currentChunk = new StringBuilder();
-                    currentTokenCount = 0;
-                }
-            }
-
-            if (currentChunk.length() > 0) {
-                currentChunk.append(" ");
-            }
-            currentChunk.append(sentence);
-            currentTokenCount += sentenceTokens;
-        }
-
-        if (currentChunk.length() > 0) {
-            chunks.add(currentChunk.toString().trim());
-        }
-        return chunks;
+        ChunkingConfig config = ChunkingConfig.semanticConfig(similarityThreshold, maxTokensPerChunk);
+        return chunk(text, "SEMANTIC", config);
     }
 
-    public List<String> hybridSemanticChunk(String text, int chunkSize, int chunkOverlap, double similarityThreshold) {
-        List<String> tokenChunks = tokenChunk(text, chunkSize);
-        if (tokenChunks.size() <= 1) return tokenChunks;
-
-        List<String> mergedChunks = new ArrayList<>();
-        mergedChunks.add(tokenChunks.get(0));
-
-        for (int i = 1; i < tokenChunks.size(); i++) {
-            String current = tokenChunks.get(i);
-            String previous = mergedChunks.get(mergedChunks.size() - 1);
-
-            int combinedTokens = estimateTokenCount(previous + " " + current);
-            double similarity = calculateSentenceSimilarity(previous, current);
-
-            if (combinedTokens <= chunkSize * 1.2 && similarity >= similarityThreshold) {
-                mergedChunks.set(mergedChunks.size() - 1, previous + " " + current);
-            } else {
-                mergedChunks.add(current);
-            }
-        }
-        return mergedChunks;
-    }
-
-    // ========== 5. 基于文档结构分块 ==========
-    public Map<String, String> markdownChunkByHeader(String markdown) {
-        Map<String, String> chunks = new LinkedHashMap<>();
-        java.util.regex.Pattern headerPattern =
-                java.util.regex.Pattern.compile("^(#{1,6})\\s+(.+)$", java.util.regex.Pattern.MULTILINE);
-
-        String[] lines = markdown.split("\n");
-        String currentHeader = "Introduction";
-        StringBuilder currentContent = new StringBuilder();
-
-        for (String line : lines) {
-            var matcher = headerPattern.matcher(line);
-            if (matcher.find()) {
-                if (currentContent.length() > 0) {
-                    chunks.put(currentHeader, currentContent.toString().trim());
-                }
-                currentHeader = matcher.group(2);
-                currentContent = new StringBuilder();
-            } else {
-                currentContent.append(line).append("\n");
-            }
-        }
-        if (currentContent.length() > 0) {
-            chunks.put(currentHeader, currentContent.toString().trim());
-        }
-        return chunks;
-    }
-
-    // ========== 6. Agentic 分块 ==========
-    public List<String> agenticChunk(String text, String task) {
-        if ("summarization".equalsIgnoreCase(task)) {
-            return tokenChunk(text, 800);
-        } else if ("qa".equalsIgnoreCase(task)) {
-            return tokenChunk(text, 300);
-        } else if ("semantic_search".equalsIgnoreCase(task)) {
-            return hybridSemanticChunk(text, 500, 75, 0.75);
-        } else {
-            return tokenChunk(text, 500);
-        }
-    }
-
-    // ========== Embedding 语义相似度 ==========
+    // ==================== 便捷方法：滑动窗口分块 ====================
 
     /**
-     * 计算两个文本段的语义相似度（使用 DashScope text-embedding-v2）
+     * 滑动窗口分块
+     *
+     * @param text 待分块文本
+     * @param windowSize 窗口大小
+     * @param stride 滑动步长
+     * @return 分块后的文本列表
      */
-    public double calculateSentenceSimilarity(String text1, String text2) {
-        try {
-            float[] embedding1 = embeddingModel.embed(text1);
-            float[] embedding2 = embeddingModel.embed(text2);
-            if (embedding1 == null || embedding2 == null || embedding1.length == 0 || embedding2.length == 0) {
-                return calculateKeywordSimilarity(text1, text2);
-            }
-            return cosineSimilarityFloat(embedding1, embedding2);
-        } catch (Exception e) {
-            return calculateKeywordSimilarity(text1, text2);
-        }
+    public List<String> slidingWindowChunk(String text, int windowSize, int stride) {
+        ChunkingConfig config = ChunkingConfig.slidingWindowConfig(windowSize, stride);
+        return chunk(text, "SLIDING_WINDOW", config);
+    }
+
+    // ==================== 便捷方法：文档结构分块 ====================
+
+    /**
+     * Markdown 文档按标题分块
+     *
+     * @param markdown Markdown 文本
+     * @param headerLevel 标题层级
+     * @return 分块后的文本列表
+     */
+    public List<String> markdownChunkByHeader(String markdown, int headerLevel) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setDocumentType("markdown");
+        config.setHeaderLevel(headerLevel);
+        return chunk(markdown, "DOCUMENT_BASED", config);
     }
 
     /**
-     * 生成文本的 embedding 向量
+     * HTML 文档按结构分块
+     *
+     * @param html HTML 文本
+     * @param headerLevel 标题层级
+     * @return 分块后的文本列表
      */
-    public List<Double> generateEmbedding(String text) {
-        try {
-            float[] embedding = embeddingModel.embed(text);
-            List<Double> result = new ArrayList<>(embedding.length);
-            for (float v : embedding) {
-                result.add((double) v);
-            }
-            return result;
-        } catch (Exception e) {
-            return Collections.emptyList();
-        }
+    public List<String> htmlChunkByHeader(String html, int headerLevel) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setDocumentType("html");
+        config.setHeaderLevel(headerLevel);
+        return chunk(html, "DOCUMENT_BASED", config);
     }
 
-    // ========== 辅助方法 ==========
+    // ==================== 便捷方法：智能体分块 ====================
 
-    private List<String> splitIntoSentences(String text) {
-        List<String> sentences = new ArrayList<>();
-        String[] parts = text.split("[。！？.!?\n]+");
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                sentences.add(trimmed);
-            }
-        }
-        return sentences;
+    /**
+     * 智能体分块（根据任务类型自动选择策略）
+     *
+     * @param text 待分块文本
+     * @param taskType 任务类型（summarization, qa, semantic_search, code_analysis）
+     * @return 分块后的文本列表
+     */
+    public List<String> agenticChunk(String text, String taskType) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setTaskType(taskType);
+        return chunk(text, "AGENTIC", config);
     }
 
+    // ==================== 便捷方法：混合分块 ====================
+
+    /**
+     * 混合分块（Token + 语义）
+     *
+     * @param text 待分块文本
+     * @param chunkSize 块大小
+     * @param similarityThreshold 相似度阈值
+     * @return 分块后的文本列表
+     */
+    public List<String> hybridChunk(String text, int chunkSize, double similarityThreshold) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(chunkSize);
+        config.setSimilarityThreshold(similarityThreshold);
+        config.setHybridStrategies(List.of("TOKEN_SEMANTIC"));
+        return chunk(text, "HYBRID", config);
+    }
+
+    // ==================== 便捷方法：上下文增强分块 ====================
+
+    /**
+     * 上下文增强分块
+     *
+     * @param text 待分块文本
+     * @param chunkSize 块大小
+     * @param enableEnrichment 是否启用上下文增强
+     * @return 分块后的 Document 列表
+     */
+    public List<Document> contextEnrichedChunk(String text, int chunkSize, boolean enableEnrichment) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(chunkSize);
+        config.setEnableContextEnrichment(enableEnrichment);
+        return chunkToDocuments(text, "CONTEXT_ENRICHED", config);
+    }
+
+    // ==================== 便捷方法：子文档分块 ====================
+
+    /**
+     * 子文档分块（分层摘要）
+     *
+     * @param text 待分块文本
+     * @param chunkSize 块大小
+     * @return 分块后的 Document 列表
+     */
+    public List<Document> subDocumentChunk(String text, int chunkSize) {
+        ChunkingConfig config = ChunkingConfig.defaultConfig();
+        config.setChunkSize(chunkSize);
+        return chunkToDocuments(text, "SUB_DOCUMENT", config);
+    }
+
+    // ==================== 工具方法 ====================
+
+    /**
+     * 获取所有可用的分块策略
+     *
+     * @return 策略名称列表
+     */
+    public String getAvailableStrategies() {
+        return strategyFactory.getAvailableStrategies();
+    }
+
+    /**
+     * 估算文本的 Token 数量
+     *
+     * @param text 文本
+     * @return Token 数量估算值
+     */
     public int estimateTokenCount(String text) {
         if (text == null || text.isEmpty()) return 0;
         long chineseChars = text.chars().filter(c -> c >= 0x4E00 && c <= 0x9FA5).count();
@@ -267,18 +298,43 @@ public class TextChunkingService {
         return (int) Math.ceil(chineseChars / 1.5 + otherChars / 4.0);
     }
 
-    private double calculateKeywordSimilarity(String text1, String text2) {
-        Set<String> words1 = new HashSet<>(Arrays.asList(text1.split("\\s+")));
-        Set<String> words2 = new HashSet<>(Arrays.asList(text2.split("\\s+")));
-        Set<String> intersection = new HashSet<>(words1);
-        intersection.retainAll(words2);
-        Set<String> union = new HashSet<>(words1);
-        union.addAll(words2);
-        if (union.isEmpty()) return 0.0;
-        return (double) intersection.size() / union.size();
+    /**
+     * 生成文本的 Embedding 向量
+     *
+     * @param text 文本
+     * @return Embedding 向量
+     */
+    public List<Double> generateEmbedding(String text) {
+        try {
+            float[] embedding = embeddingModel.embed(text);
+            List<Double> result = new java.util.ArrayList<>(embedding.length);
+            for (float v : embedding) {
+                result.add((double) v);
+            }
+            return result;
+        } catch (Exception e) {
+            return java.util.Collections.emptyList();
+        }
     }
 
-    public double cosineSimilarityFloat(float[] vec1, float[] vec2) {
+    /**
+     * 计算两个文本的余弦相似度
+     *
+     * @param text1 文本1
+     * @param text2 文本2
+     * @return 相似度值（0-1）
+     */
+    public double calculateSimilarity(String text1, String text2) {
+        try {
+            float[] embed1 = embeddingModel.embed(text1);
+            float[] embed2 = embeddingModel.embed(text2);
+            return cosineSimilarity(embed1, embed2);
+        } catch (Exception e) {
+            return 0.0;
+        }
+    }
+
+    private double cosineSimilarity(float[] vec1, float[] vec2) {
         if (vec1.length != vec2.length) {
             throw new IllegalArgumentException("Vectors must have same dimension");
         }
