@@ -79,6 +79,6 @@
   <!-- 底部标注 -->
   <g transform="translate(620, 545)">
     <!-- 鲸鱼图标 -->
-    <text x="0" y="30" font-family="Comic Sans MS, cursive, sans-serif" font-size="10" fill="#0066cc">https://github.com/tyronczt/ai-learn</text>
+    <text x="0" y="30" font-family="Comic Sans MS, cursive, sans-serif" font-size="10" fill="#0066cc">https://github.com/tyronczt/hello-ai</text>
   </g>
 </svg>
