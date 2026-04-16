@@ -21,8 +21,8 @@ public class SemanticChunkingStrategy extends AbstractChunkingStrategy {
     }
 
     @Override
-    public String getStrategyName() {
-        return "SEMANTIC";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.SEMANTIC;
     }
 
     @Override

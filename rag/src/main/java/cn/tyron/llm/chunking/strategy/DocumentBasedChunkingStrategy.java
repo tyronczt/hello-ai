@@ -26,8 +26,8 @@ public class DocumentBasedChunkingStrategy extends AbstractChunkingStrategy {
             Pattern.compile("```[\\w]*\\n(.*?)```", Pattern.DOTALL);
 
     @Override
-    public String getStrategyName() {
-        return "DOCUMENT_BASED";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.DOCUMENT_BASED;
     }
 
     @Override

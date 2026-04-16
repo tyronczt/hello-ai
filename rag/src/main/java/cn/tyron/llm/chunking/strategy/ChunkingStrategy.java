@@ -12,9 +12,20 @@ import java.util.Map;
 public interface ChunkingStrategy {
 
     /**
-     * 获取策略名称
+     * 获取策略类型
+     *
+     * @return 策略枚举类型
      */
-    String getStrategyName();
+    ChunkingStrategyType getStrategyType();
+
+    /**
+     * 获取策略名称（兼容方法）
+     *
+     * @return 策略名称字符串
+     */
+    default String getStrategyName() {
+        return getStrategyType().getName();
+    }
 
     /**
      * 执行分块操作

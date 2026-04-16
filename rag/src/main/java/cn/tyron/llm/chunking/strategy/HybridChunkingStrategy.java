@@ -9,29 +9,29 @@ import java.util.List;
 
 /**
  * 混合分块策略 (Hybrid Chunking)
- * 结合多种分块策略，如 Token 分块 + 语义相似度合并
+ * 结合多种分块策略，如固定大小分块 + 语义相似度合并
  */
 @Component
 public class HybridChunkingStrategy extends AbstractChunkingStrategy {
 
     private final EmbeddingModel embeddingModel;
-    private final TokenChunkingStrategy tokenStrategy;
+    private final FixedSizeChunkingStrategy fixedSizeStrategy;
     private final RecursiveChunkingStrategy recursiveStrategy;
     private final SemanticChunkingStrategy semanticStrategy;
 
     public HybridChunkingStrategy(EmbeddingModel embeddingModel,
-                                  TokenChunkingStrategy tokenStrategy,
+                                  FixedSizeChunkingStrategy fixedSizeStrategy,
                                   RecursiveChunkingStrategy recursiveStrategy,
                                   SemanticChunkingStrategy semanticStrategy) {
         this.embeddingModel = embeddingModel;
-        this.tokenStrategy = tokenStrategy;
+        this.fixedSizeStrategy = fixedSizeStrategy;
         this.recursiveStrategy = recursiveStrategy;
         this.semanticStrategy = semanticStrategy;
     }
 
     @Override
-    public String getStrategyName() {
-        return "HYBRID";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.HYBRID;
     }
 
     @Override
@@ -58,16 +58,16 @@ public class HybridChunkingStrategy extends AbstractChunkingStrategy {
     }
 
     /**
-     * Token 分块 + 语义合并
-     * 先用 Token 分块，然后对语义相似的相邻块进行合并
+     * 固定大小分块 + 语义合并
+     * 先用固定大小分块，然后对语义相似的相邻块进行合并
      */
     private List<String> tokenSemanticHybrid(String text, ChunkingConfig config) {
-        // 第一步：Token 分块（较小的块）
+        // 第一步：固定大小分块（较小的块）
         ChunkingConfig tokenConfig = ChunkingConfig.defaultConfig();
         tokenConfig.setChunkSize(config.getChunkSize() / 2);
         tokenConfig.setChunkOverlap(config.getChunkOverlap() / 2);
         
-        List<String> initialChunks = tokenStrategy.chunk(text, tokenConfig);
+        List<String> initialChunks = fixedSizeStrategy.chunk(text, tokenConfig);
         
         if (initialChunks.size() <= 1) {
             return initialChunks;

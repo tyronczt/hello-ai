@@ -13,8 +13,8 @@ import java.util.List;
 public class SlidingWindowChunkingStrategy extends AbstractChunkingStrategy {
 
     @Override
-    public String getStrategyName() {
-        return "SLIDING_WINDOW";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.SLIDING_WINDOW;
     }
 
     @Override

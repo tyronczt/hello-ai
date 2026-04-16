@@ -13,8 +13,8 @@ import java.util.List;
 public class OverlappingChunkingStrategy extends AbstractChunkingStrategy {
 
     @Override
-    public String getStrategyName() {
-        return "OVERLAPPING";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.OVERLAPPING;
     }
 
     @Override

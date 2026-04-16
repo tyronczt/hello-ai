@@ -3,6 +3,7 @@ package cn.tyron.llm.chunking;
 import cn.tyron.llm.chunking.strategy.ChunkingStrategy;
 import cn.tyron.llm.chunking.strategy.ChunkingStrategy.ChunkingConfig;
 import cn.tyron.llm.chunking.strategy.ChunkingStrategyFactory;
+import cn.tyron.llm.chunking.strategy.ChunkingStrategyType;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
@@ -12,19 +13,8 @@ import java.util.List;
 /**
  * 文本分块服务
  * 使用策略模式支持多种文本分块策略
- * 
- * 支持的分块策略：
- * - FIXED_SIZE: 固定大小分块
- * - OVERLAPPING: 重叠分块
- * - RECURSIVE: 递归分块（默认）
- * - TOKEN: Token级别分块
- * - SEMANTIC: 语义分块
- * - SLIDING_WINDOW: 滑动窗口分块
- * - DOCUMENT_BASED: 文档结构分块
- * - AGENTIC: 智能体分块
- * - HYBRID: 混合分块
- * - CONTEXT_ENRICHED: 上下文增强分块
- * - SUB_DOCUMENT: 子文档分块
+ *
+ * 支持的分块策略：参见 ChunkingStrategyType 枚举
  */
 @Service
 public class TextChunkingService {
@@ -32,7 +22,7 @@ public class TextChunkingService {
     private final ChunkingStrategyFactory strategyFactory;
     private final EmbeddingModel embeddingModel;
 
-    public TextChunkingService(ChunkingStrategyFactory strategyFactory, 
+    public TextChunkingService(ChunkingStrategyFactory strategyFactory,
                                EmbeddingModel embeddingModel) {
         this.strategyFactory = strategyFactory;
         this.embeddingModel = embeddingModel;
@@ -44,12 +34,12 @@ public class TextChunkingService {
      * 使用指定策略进行分块
      *
      * @param text 待分块文本
-     * @param strategyName 策略名称
+     * @param strategyType 策略类型
      * @param config 分块配置
      * @return 分块后的文本列表
      */
-    public List<String> chunk(String text, String strategyName, ChunkingConfig config) {
-        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyName);
+    public List<String> chunk(String text, ChunkingStrategyType strategyType, ChunkingConfig config) {
+        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyType);
         return strategy.chunk(text, config);
     }
 
@@ -57,12 +47,12 @@ public class TextChunkingService {
      * 使用指定策略进行分块（返回 Document 对象）
      *
      * @param text 待分块文本
-     * @param strategyName 策略名称
+     * @param strategyType 策略类型
      * @param config 分块配置
      * @return 分块后的 Document 列表
      */
-    public List<Document> chunkToDocuments(String text, String strategyName, ChunkingConfig config) {
-        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyName);
+    public List<Document> chunkToDocuments(String text, ChunkingStrategyType strategyType, ChunkingConfig config) {
+        ChunkingStrategy strategy = strategyFactory.getStrategy(strategyType);
         return strategy.chunkToDocuments(text, config);
     }
 
@@ -74,10 +64,8 @@ public class TextChunkingService {
      * @return 分块后的文本列表
      */
     public List<String> chunk(String text, ChunkingConfig config) {
-        return chunk(text, "RECURSIVE", config);
+        return chunk(text, ChunkingStrategyType.RECURSIVE, config);
     }
-
-    // ==================== 便捷方法：固定大小分块 ====================
 
     /**
      * 固定大小分块
@@ -88,7 +76,7 @@ public class TextChunkingService {
      */
     public List<String> fixedSizeChunk(String text, int chunkSize) {
         ChunkingConfig config = ChunkingConfig.fixedSizeConfig(chunkSize, 0);
-        return chunk(text, "FIXED_SIZE", config);
+        return chunk(text, ChunkingStrategyType.FIXED_SIZE, config);
     }
 
     /**
@@ -99,9 +87,9 @@ public class TextChunkingService {
      * @param overlap 重叠大小
      * @return 分块后的文本列表
      */
-    public List<String> fixedSizeChunk(String text, int chunkSize, int overlap) {
+    public List<String> overlappingChunk(String text, int chunkSize, int overlap) {
         ChunkingConfig config = ChunkingConfig.fixedSizeConfig(chunkSize, overlap);
-        return chunk(text, "OVERLAPPING", config);
+        return chunk(text, ChunkingStrategyType.OVERLAPPING, config);
     }
 
     // ==================== 便捷方法：递归分块 ====================
@@ -116,37 +104,7 @@ public class TextChunkingService {
     public List<String> recursiveChunk(String text, int maxChunkSize) {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setChunkSize(maxChunkSize);
-        return chunk(text, "RECURSIVE", config);
-    }
-
-    // ==================== 便捷方法：Token 分块 ====================
-
-    /**
-     * Token 级别分块
-     *
-     * @param text 待分块文本
-     * @param chunkSize Token 数量
-     * @return 分块后的文本列表
-     */
-    public List<String> tokenChunk(String text, int chunkSize) {
-        ChunkingConfig config = ChunkingConfig.defaultConfig();
-        config.setChunkSize(chunkSize);
-        return chunk(text, "TOKEN", config);
-    }
-
-    /**
-     * Token 级别分块（带重叠）
-     *
-     * @param text 待分块文本
-     * @param chunkSize Token 数量
-     * @param chunkOverlap 重叠 Token 数量
-     * @return 分块后的文本列表
-     */
-    public List<String> tokenChunk(String text, int chunkSize, int chunkOverlap) {
-        ChunkingConfig config = ChunkingConfig.defaultConfig();
-        config.setChunkSize(chunkSize);
-        config.setChunkOverlap(chunkOverlap);
-        return chunk(text, "TOKEN", config);
+        return chunk(text, ChunkingStrategyType.RECURSIVE, config);
     }
 
     // ==================== 便捷方法：语义分块 ====================
@@ -161,7 +119,7 @@ public class TextChunkingService {
      */
     public List<String> semanticChunk(String text, double similarityThreshold, int maxTokensPerChunk) {
         ChunkingConfig config = ChunkingConfig.semanticConfig(similarityThreshold, maxTokensPerChunk);
-        return chunk(text, "SEMANTIC", config);
+        return chunk(text, ChunkingStrategyType.SEMANTIC, config);
     }
 
     // ==================== 便捷方法：滑动窗口分块 ====================
@@ -176,7 +134,7 @@ public class TextChunkingService {
      */
     public List<String> slidingWindowChunk(String text, int windowSize, int stride) {
         ChunkingConfig config = ChunkingConfig.slidingWindowConfig(windowSize, stride);
-        return chunk(text, "SLIDING_WINDOW", config);
+        return chunk(text, ChunkingStrategyType.SLIDING_WINDOW, config);
     }
 
     // ==================== 便捷方法：文档结构分块 ====================
@@ -192,7 +150,17 @@ public class TextChunkingService {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setDocumentType("markdown");
         config.setHeaderLevel(headerLevel);
-        return chunk(markdown, "DOCUMENT_BASED", config);
+        return chunk(markdown, ChunkingStrategyType.DOCUMENT_BASED, config);
+    }
+
+    /**
+     * Markdown 文档按标题分块（默认层级2）
+     *
+     * @param markdown Markdown 文本
+     * @return 分块后的文本列表
+     */
+    public List<String> markdownChunkByHeader(String markdown) {
+        return markdownChunkByHeader(markdown, 2);
     }
 
     /**
@@ -206,7 +174,7 @@ public class TextChunkingService {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setDocumentType("html");
         config.setHeaderLevel(headerLevel);
-        return chunk(html, "DOCUMENT_BASED", config);
+        return chunk(html, ChunkingStrategyType.DOCUMENT_BASED, config);
     }
 
     // ==================== 便捷方法：智能体分块 ====================
@@ -221,25 +189,27 @@ public class TextChunkingService {
     public List<String> agenticChunk(String text, String taskType) {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setTaskType(taskType);
-        return chunk(text, "AGENTIC", config);
+        return chunk(text, ChunkingStrategyType.AGENTIC, config);
     }
 
     // ==================== 便捷方法：混合分块 ====================
 
     /**
-     * 混合分块（Token + 语义）
+     * 混合语义分块（Token + 语义 + 重叠）
      *
      * @param text 待分块文本
      * @param chunkSize 块大小
+     * @param chunkOverlap 重叠大小
      * @param similarityThreshold 相似度阈值
      * @return 分块后的文本列表
      */
-    public List<String> hybridChunk(String text, int chunkSize, double similarityThreshold) {
+    public List<String> hybridSemanticChunk(String text, int chunkSize, int chunkOverlap, double similarityThreshold) {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setChunkSize(chunkSize);
+        config.setChunkOverlap(chunkOverlap);
         config.setSimilarityThreshold(similarityThreshold);
-        config.setHybridStrategies(List.of("TOKEN_SEMANTIC"));
-        return chunk(text, "HYBRID", config);
+        config.setHybridStrategies(List.of("RECURSIVE_SEMANTIC"));
+        return chunk(text, ChunkingStrategyType.HYBRID, config);
     }
 
     // ==================== 便捷方法：上下文增强分块 ====================
@@ -256,7 +226,7 @@ public class TextChunkingService {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setChunkSize(chunkSize);
         config.setEnableContextEnrichment(enableEnrichment);
-        return chunkToDocuments(text, "CONTEXT_ENRICHED", config);
+        return chunkToDocuments(text, ChunkingStrategyType.CONTEXT_ENRICHED, config);
     }
 
     // ==================== 便捷方法：子文档分块 ====================
@@ -271,7 +241,7 @@ public class TextChunkingService {
     public List<Document> subDocumentChunk(String text, int chunkSize) {
         ChunkingConfig config = ChunkingConfig.defaultConfig();
         config.setChunkSize(chunkSize);
-        return chunkToDocuments(text, "SUB_DOCUMENT", config);
+        return chunkToDocuments(text, ChunkingStrategyType.SUB_DOCUMENT, config);
     }
 
     // ==================== 工具方法 ====================

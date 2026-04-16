@@ -20,16 +20,16 @@ public class AgenticChunkingStrategy extends AbstractChunkingStrategy {
     private final List<ChunkingStrategy> fallbackStrategies;
 
     public AgenticChunkingStrategy(ChatClient chatClient,
-                                   TokenChunkingStrategy tokenStrategy,
+                                   FixedSizeChunkingStrategy fixedSizeStrategy,
                                    SemanticChunkingStrategy semanticStrategy,
                                    RecursiveChunkingStrategy recursiveStrategy) {
         this.chatClient = chatClient;
-        this.fallbackStrategies = List.of(tokenStrategy, semanticStrategy, recursiveStrategy);
+        this.fallbackStrategies = List.of(fixedSizeStrategy, semanticStrategy, recursiveStrategy);
     }
 
     @Override
-    public String getStrategyName() {
-        return "AGENTIC";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.AGENTIC;
     }
 
     @Override

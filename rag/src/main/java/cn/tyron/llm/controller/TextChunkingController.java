@@ -1,10 +1,12 @@
 package cn.tyron.llm.controller;
 
 import cn.tyron.llm.chunking.TextChunkingService;
+import org.springframework.ai.document.Document;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 文本分块控制器
@@ -25,9 +27,19 @@ public class TextChunkingController {
     @GetMapping("/fixed")
     public Result<List<String>> fixedSizeChunk(
             @RequestParam String text,
+            @RequestParam(defaultValue = "500") int chunkSize) {
+        return Result.success(textChunkingService.fixedSizeChunk(text, chunkSize));
+    }
+
+    /**
+     * 重叠分块接口
+     */
+    @GetMapping("/overlapping")
+    public Result<List<String>> overlappingChunk(
+            @RequestParam String text,
             @RequestParam(defaultValue = "500") int chunkSize,
             @RequestParam(defaultValue = "50") int overlap) {
-        return Result.success(textChunkingService.fixedSizeChunk(text, chunkSize, overlap));
+        return Result.success(textChunkingService.overlappingChunk(text, chunkSize, overlap));
     }
 
     /**
@@ -41,14 +53,14 @@ public class TextChunkingController {
     }
 
     /**
-     * Token 分块
+     * 滑动窗口分块
      */
-    @GetMapping("/token")
-    public Result<List<String>> tokenChunk(
+    @GetMapping("/sliding-window")
+    public Result<List<String>> slidingWindowChunk(
             @RequestParam String text,
-            @RequestParam(defaultValue = "500") int chunkSize,
-            @RequestParam(defaultValue = "50") int chunkOverlap) {
-        return Result.success(textChunkingService.tokenChunk(text, chunkSize, chunkOverlap));
+            @RequestParam(defaultValue = "500") int windowSize,
+            @RequestParam(defaultValue = "100") int stride) {
+        return Result.success(textChunkingService.slidingWindowChunk(text, windowSize, stride));
     }
 
     /**
@@ -75,11 +87,32 @@ public class TextChunkingController {
     }
 
     /**
-     * Markdown 按标题分块
+     * Markdown 按标题分块（POST）
      */
-    @GetMapping("/markdown")
-    public Result<Map<String, String>> markdownChunk(@RequestParam String markdown) {
-        return Result.success(textChunkingService.markdownChunkByHeader(markdown));
+    @PostMapping("/markdown")
+    public Result<List<String>> markdownChunk(@RequestBody MarkdownRequest request) {
+        return Result.success(textChunkingService.markdownChunkByHeader(request.getMarkdown(), request.getHeaderLevel()));
+    }
+
+    public static class MarkdownRequest {
+        private String markdown;
+        private int headerLevel = 2;
+
+        public String getMarkdown() {
+            return markdown;
+        }
+
+        public void setMarkdown(String markdown) {
+            this.markdown = markdown;
+        }
+
+        public int getHeaderLevel() {
+            return headerLevel;
+        }
+
+        public void setHeaderLevel(int headerLevel) {
+            this.headerLevel = headerLevel;
+        }
     }
 
     /**
@@ -99,7 +132,7 @@ public class TextChunkingController {
     public Result<Double> calculateSimilarity(
             @RequestParam String text1,
             @RequestParam String text2) {
-        return Result.success(textChunkingService.calculateSentenceSimilarity(text1, text2));
+        return Result.success(textChunkingService.calculateSimilarity(text1, text2));
     }
 
     /**
@@ -111,6 +144,38 @@ public class TextChunkingController {
     }
 
     /**
+     * 上下文增强分块（返回带元数据的文档）
+     */
+    @GetMapping("/context-enriched")
+    public Result<List<Map<String, Object>>> contextEnrichedChunk(
+            @RequestParam String text,
+            @RequestParam(defaultValue = "500") int chunkSize,
+            @RequestParam(defaultValue = "true") boolean enableEnrichment) {
+        List<Document> docs = textChunkingService.contextEnrichedChunk(text, chunkSize, enableEnrichment);
+        return Result.success(convertDocs(docs));
+    }
+
+    /**
+     * 子文档分块（分层摘要，返回带元数据的文档）
+     */
+    @GetMapping("/sub-document")
+    public Result<List<Map<String, Object>>> subDocumentChunk(
+            @RequestParam String text,
+            @RequestParam(defaultValue = "500") int chunkSize) {
+        List<Document> docs = textChunkingService.subDocumentChunk(text, chunkSize);
+        return Result.success(convertDocs(docs));
+    }
+
+    private List<Map<String, Object>> convertDocs(List<Document> docs) {
+        return docs.stream().map(doc -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("text", doc.getText());
+            map.put("metadata", doc.getMetadata());
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    /**
      * 统一分块接口
      */
     @PostMapping("/chunk")
@@ -118,13 +183,16 @@ public class TextChunkingController {
         List<String> result;
         switch (request.getStrategy().toLowerCase()) {
             case "fixed":
-                result = textChunkingService.fixedSizeChunk(request.getText(), request.getChunkSize(), request.getOverlap());
+                result = textChunkingService.fixedSizeChunk(request.getText(), request.getChunkSize());
+                break;
+            case "overlapping":
+                result = textChunkingService.overlappingChunk(request.getText(), request.getChunkSize(), request.getOverlap());
                 break;
             case "recursive":
                 result = textChunkingService.recursiveChunk(request.getText(), request.getChunkSize());
                 break;
-            case "token":
-                result = textChunkingService.tokenChunk(request.getText(), request.getChunkSize(), request.getOverlap());
+            case "sliding_window":
+                result = textChunkingService.slidingWindowChunk(request.getText(), request.getChunkSize(), request.getOverlap());
                 break;
             case "semantic":
                 result = textChunkingService.semanticChunk(request.getText(), request.getSimilarityThreshold(), request.getChunkSize());
@@ -136,7 +204,7 @@ public class TextChunkingController {
                 result = textChunkingService.agenticChunk(request.getText(), request.getTask());
                 break;
             default:
-                result = textChunkingService.tokenChunk(request.getText(), request.getChunkSize(), request.getOverlap());
+                result = textChunkingService.fixedSizeChunk(request.getText(), request.getChunkSize());
         }
         return Result.success(result);
     }
@@ -156,33 +224,85 @@ public class TextChunkingController {
             return result;
         }
 
-        public int getCode() { return code; }
-        public void setCode(int code) { this.code = code; }
-        public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-        public T getData() { return data; }
-        public void setData(T data) { this.data = data; }
+        public int getCode() {
+            return code;
+        }
+
+        public void setCode(int code) {
+            this.code = code;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public T getData() {
+            return data;
+        }
+
+        public void setData(T data) {
+            this.data = data;
+        }
     }
 
     public static class ChunkRequest {
         private String text;
-        private String strategy = "token";
+        private String strategy = "fixed";
         private int chunkSize = 500;
         private int overlap = 50;
         private double similarityThreshold = 0.5;
         private String task = "semantic_search";
 
-        public String getText() { return text; }
-        public void setText(String text) { this.text = text; }
-        public String getStrategy() { return strategy; }
-        public void setStrategy(String strategy) { this.strategy = strategy; }
-        public int getChunkSize() { return chunkSize; }
-        public void setChunkSize(int chunkSize) { this.chunkSize = chunkSize; }
-        public int getOverlap() { return overlap; }
-        public void setOverlap(int overlap) { this.overlap = overlap; }
-        public double getSimilarityThreshold() { return similarityThreshold; }
-        public void setSimilarityThreshold(double similarityThreshold) { this.similarityThreshold = similarityThreshold; }
-        public String getTask() { return task; }
-        public void setTask(String task) { this.task = task; }
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
+        }
+
+        public String getStrategy() {
+            return strategy;
+        }
+
+        public void setStrategy(String strategy) {
+            this.strategy = strategy;
+        }
+
+        public int getChunkSize() {
+            return chunkSize;
+        }
+
+        public void setChunkSize(int chunkSize) {
+            this.chunkSize = chunkSize;
+        }
+
+        public int getOverlap() {
+            return overlap;
+        }
+
+        public void setOverlap(int overlap) {
+            this.overlap = overlap;
+        }
+
+        public double getSimilarityThreshold() {
+            return similarityThreshold;
+        }
+
+        public void setSimilarityThreshold(double similarityThreshold) {
+            this.similarityThreshold = similarityThreshold;
+        }
+
+        public String getTask() {
+            return task;
+        }
+
+        public void setTask(String task) {
+            this.task = task;
+        }
     }
 }

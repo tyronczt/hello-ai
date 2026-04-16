@@ -22,8 +22,8 @@ public class ContextEnrichedChunkingStrategy extends AbstractChunkingStrategy {
     }
 
     @Override
-    public String getStrategyName() {
-        return "CONTEXT_ENRICHED";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.CONTEXT_ENRICHED;
     }
 
     @Override

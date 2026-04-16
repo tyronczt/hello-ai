@@ -25,8 +25,8 @@ public class SubDocumentChunkingStrategy extends AbstractChunkingStrategy {
     }
 
     @Override
-    public String getStrategyName() {
-        return "SUB_DOCUMENT";
+    public ChunkingStrategyType getStrategyType() {
+        return ChunkingStrategyType.SUB_DOCUMENT;
     }
 
     @Override
