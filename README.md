@@ -14,7 +14,7 @@
 [RAG从理论到实践的完整学习路径](rag/README.md)
 
 ### 🎯 Agent (智能体)
-- [Javaer 从零学习 Agent：2026 学习包](agent/zero-to-one/README.md) — 独立入门路线、28 次练习、离线 Java 实验与 2026 跨平台资料
+- [Javaer 转 Agent：学习路线](agent/zero-to-one/README.md) — 七阶段串起模型调用、工具循环、框架实战与工程化，用资料助手逐步练习和验收
 - [AgentScope Java 学习与落地路线](agent/agentscope/README.md)
 - [Pi Agent 学习笔记](agent/pi-agent/README.md) · [DeepSeek Harness 学习笔记](agent/deepseek-harness/README.md)
 
