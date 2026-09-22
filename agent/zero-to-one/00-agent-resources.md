@@ -48,6 +48,11 @@
 | [AIGC-Interview-Book](https://github.com/WeThinkIn/AIGC-Interview-Book) | 综合题库；复习 | README 的 AI Agent 基础、2026 AI Agent 岗面试 50 问、开发岗转 AI 应用工程师路线 | 范围含算法、视觉、训练等；只选与当前练习有关的问题 |
 | [DeerFlow](https://github.com/bytedance/deer-flow) | 综合 Agent 应用；进阶 | 从 README 的核心能力进入：工具、Skills、子 Agent、沙箱、上下文和记忆 | 当前 2.0 为重写版，旧 Deep Research 在 1.x 分支；建立单 Agent 基础后再研究 |
 | [深入理解 AI Agent：李博杰](https://github.com/bojieli/ai-agent-book) | 原理与工程书；长期参考 | 先按主题读上下文、工具、运行与评估，再选一个配套实验 | README 当前为 2.0；已有 PDF v1.0 的页码、章节号不能直接套用新版 |
+| [《Agent 架构实操》：ryzqi/learn-agent](https://github.com/ryzqi/learn-agent) | 中文架构实操；TypeScript 配套代码 | 先读 Agent Loop、工具和权限，再读上下文压缩与记忆 | 用 Java 复现一个工具循环；多 Agent、Worktree 与 MCP 按需后置 |
+| [agent_learning：从零学习 Agent 开发](https://github.com/Haozhe-Xing/agent_learning) | 中英双语系统教材；原理到工程 | 从工具、记忆、规划开始，再对照 reference-agent 阅读评测与安全实现 | 先学运行机制；框架、多 Agent 与 Agentic RL 按需选读 |
+| [布吉岛 Agent：aiagentguide](https://github.com/itkdm/aiagentguide) | 中文开发指南；概念与选型 | 先区分 Agent、Chatbot、Workflow 和 RAG，再读工具调用与上下文管理 | 先完成一个最小案例，再按需求比较框架 |
+| [ai-agents-from-zero：从零到实战](https://github.com/didilili/ai-agents-from-zero) | 学习路线、实战与面试题库 | 先看基础概念和工具调用；需要 Python 技术栈时再跟练 LangChain / LangGraph | Coze / Dify、部署与微调分支按需选，Java 主线可继续使用 Spring AI |
+| [ModelScope 魔搭 Cookbook](https://modelscope.cn/active/ms-cookbook) | 魔搭社区 Cookbook 入口；专题补充 | 围绕当前练习查找资料，选一个案例阅读 | 跟练前核对模型、依赖版本与运行条件 |
 
 读 **Learn Claude Code** 时，选根目录的 17 节主线。docs/、agents/ 中还留着旧版 12 节，章节号对不上，记笔记时顺手记下版本。第一轮看循环、工具和权限即可，练习时可以把 Bash 换成一个只读工具；后台任务、调度和多 Agent 留到后面。
 
@@ -91,9 +96,9 @@
 |---|---|---|
 | [程序员 Left：Agent 工程解析（零）](https://x.com/coder_left/status/2097253174260502592) | 2026-09-08 · 概念文章 | 入门看聊天、工作流、Agent 的区别；找出工具结果如何回填。伪代码不是跨厂商统一 API |
 | [川处安：重新理解 AI Agent 的一切](https://shens.blog/posts/202609/agent-fundamentals/) · [X 入口](https://x.com/leoshen0/status/2099641267726758095) | 2026-09-15（X）· 原理导读 | 串联 Loop、上下文、工具与 Harness；全量历史、MCP 加载和缓存收益需区分实现 |
-| [meng shao：CMU AI Agents](https://x.com/shao__meng/status/2097496946877636655) · [课程站](https://www.cmu-agents.com/) · [作业 1](https://github.com/cmu-agents/assignment-1/blob/main/ASSIGNMENT.md) | 2026-09-09 · 课程导读 | 进阶借鉴实现与验证方式；需要 Python，部分云端运行可能计费 |
+| [meng shao：CMU AI Agents](https://x.com/shao__meng/status/2097496946877636655) · [作业 1](https://github.com/cmu-agents/assignment-1/blob/main/ASSIGNMENT.md) | 2026-09-09 · 课程导读 | 进阶借鉴实现与验证方式；需要 Python，部分云端运行可能计费 |
 | [meng shao：Harness 六层手册导读](https://x.com/shao__meng/status/2093228362965651665) | 2026-08-28 · 工程导读 | 用约束、验证、循环、记忆、权限、观察记录检查自己的练习 |
-| [lumxss：Agentic Design Patterns 推荐](https://x.com/bkdgiffug/status/2097499479926767871) · [推荐仓库](https://github.com/evoiz/Agentic-Design-Patterns) · [出版社](https://link.springer.com/book/10.1007/978-3-032-01402-3) | 2026-09-09（帖子）· 书籍推荐 | 按需读工具、链式流程、路由与反思；2026 推荐不等于 2026 新书 |
+| [lumxss：Agentic Design Patterns 推荐](https://x.com/bkdgiffug/status/2097499479926767871) | 2026-09-09（帖子）· 书籍推荐 | 按需读工具、链式流程、路由与反思；2026 推荐不等于 2026 新书 |
 | [小山学堂：AI 教我学习](https://xueai.miyang.cn/slides/learn.html#learn-1.html) | 学习方法 · 选读 learn-1、3、4、5、15 | 说明学习起点，一次解决一个问题；闭卷回答，再核对和变换条件 |
 
 ## 5. 动手开发，用这些 Java 框架和示例
@@ -103,7 +108,6 @@
 | 编号 | 仓库 | 语言 / 阶段 | 怎么用 |
 |---|---|---|---|
 | G01 | [Hello-Agents](https://github.com/datawhalechina/hello-agents) | 中文教材，示例以 Python 为主；入门 | 学概念，不要求先把 Python 环境全部搭完 |
-| G02 | [Generative AI for Beginners Java](https://github.com/microsoft/Generative-AI-for-beginners-java) | Java；基础 | 学消息、提示词、工具与 RAG；Azure/Codespaces 等部署支线按需选 |
 | G03 | [AI Agents for Beginners](https://github.com/microsoft/ai-agents-for-beginners) | 通用原理 / Python；补充 | 用来对照工具、记忆与设计模式，避免与主教材重复刷 |
 | G04 | [AgentGuide](https://github.com/adongwanai/AgentGuide) | 中文工程索引；中期 | 带着实际问题检索，不从算法和求职部分开始 |
 | G05 | [sjzhang312/Agent](https://github.com/sjzhang312/Agent) | 中文问答 / Python；自测 | 解释完问题后再查答案，注意部分内容待补 |
@@ -220,17 +224,6 @@
 
 评测可以从第 6 节的 D01 读起，再看 EvalGrill 怎样整理失败案例。调用轨迹能告诉你哪一步出了问题，任务是否完成则要靠事先写好的标准判断。等多个独立应用需要通信时，再看 A2A。
 
-### 8.5 论文选读：有问题，再找实验依据
-
-这几篇论文较早，放在这里是为了补充概念和实验方法。先看它研究什么任务、怎么评价结果、结论适用于什么条件。有一项正好对应自己的问题，再往实现里读。
-
-| 论文 | 年份 | 适合带着什么问题读 |
-|---|---|---|
-| [Lost in the Middle](https://arxiv.org/abs/2307.03172) | 2023 预印本 / 2024 期刊 | 上下文足够长，是否就能稳定找到放在不同位置的信息？ |
-| [MCP-Zero](https://arxiv.org/abs/2506.01056) | 2025 | 工具越来越多时，怎样按任务发现需要的能力？它是研究方案，如何与 MCP 协议本身区分？ |
-| [τ²-Bench](https://arxiv.org/abs/2506.07982) | 2025 | 用户和 Agent 都能采取动作时，如何构造环境并判断任务成功？ |
-| [Why Do Multi-Agent LLM Systems Fail?](https://arxiv.org/abs/2503.13657) | 2025 | 多 Agent 的失败发生在任务理解、协作还是结果验证？自己的失败案例属于哪一类？ |
-
 这一部分按需查即可。先把工具循环、上下文和权限处理好，留下一组评测用例和能定位问题的调用轨迹，再往长期记忆、多 Agent 编排扩展。
 
 ## 9. 看完一段，就做一点
@@ -252,4 +245,22 @@
 
 最后合上资料，试着讲清三件事：为什么需要工具循环？模型选错工具时由谁拦截？怎么判断任务已经完成？哪一处讲不清，就回到代码里跑一次，看看实际发生了什么。
 
-经典补充：[Anthropic：Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)，2024-12-19，用于理解工作流与 Agent 的取舍；适合作为概念补充阅读。
+### **持续更新中，看到好的资料和项目都会更新！！！**
+
+**也可在文章顶部的「资料导航」tab进行速览查看😃**
+
+**！！！敬请关注！！！**
+
+## 更新记录
+
+### 2026-09-18｜补充实操教程，精简资料清单
+
+- **新增 5 项资料**：《Agent 架构实操》（ryzqi/learn-agent）、agent_learning、布吉岛 Agent（aiagentguide）、ai-agents-from-zero、ModelScope 魔搭 Cookbook。已补充各自的学习用途、阅读起点和 Javaer 跟练建议。
+- **移除 9 项资料入口**：CMU AI Agents 课程站、Agentic Design Patterns 仓库及出版社书目、Generative AI for Beginners Java、Lost in the Middle、MCP-Zero、τ²-Bench、Why Do Multi-Agent LLM Systems Fail?、Building effective agents。其余未涉及的推荐推文与作业入口保留。
+- **同步正文与资料导航**：清理移除条目对应的说明和论文选读小节，导航现收录 91 个链接。
+
+### 2026-09-17｜上线资料导航
+
+- 文章新增“正文 / 资料导航”Tab，可在阅读文章和查找资料之间切换。
+- 资料导航支持分类筛选、关键词搜索、展开更多和复制链接；同一资料的部分阅读入口合并展示。
+- 默认展示入门精选，方便先选一套教材和一个 Java 框架开始练习。
