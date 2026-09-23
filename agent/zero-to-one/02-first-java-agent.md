@@ -21,12 +21,7 @@ Content-Type: application/json
 
 ## 0、先用同一个问题做四次迭代
 
-在 `first-agent` 目录打包后，先运行一次引导练习：
-
-```powershell
-mvn -q -DskipTests package
-java -jar target/first-agent-0.0.1-SNAPSHOT.jar --guided
-```
+在 IntelliJ IDEA 中打开 `first-agent/pom.xml`，选择 JDK 21，创建主类为 `example.agent.AgentApplication` 的运行配置。在 **Environment variables** 中设置 `DEEPSEEK_API_KEY`，将 **Program arguments** 设为 `--guided`，点击运行即可进入引导练习；问题由你在 IDEA 的 Run 控制台输入。密钥配置注意事项见第 5.4 节。
 
 程序先请你输入一个问题；空输入不会执行。四轮都用你输入的同一个问题，才能比较变化。每轮会展示将发送的初始消息和工具摘要，请你写下预测；再按回车运行、输入 `s` 跳过，或输入 `q` 退出。运行后看实际回答与工具轨迹，并写一句发现。**只有按回车运行才会请求线上模型并产生用量。**
 
@@ -71,11 +66,11 @@ public static List<Message> initialMessages(String question, int stage) {
 
 这里要分清三种“记住”：模型训练得到的通用知识不等于项目资料；本轮请求携带的文档是**上下文**；把用户偏好或历史跨请求保存，才涉及**会话记忆**。第 2 阶段的两份文档可以视作一个极小的教学知识集合，但知识库本身在 Java 内存里，模型只看见程序放进请求的内容。将来资料增多，可替换搜索实现为数据库、全文检索或向量检索；那是检索方法升级，模型仍只能依据实际返回的材料判断。
 
-第 3 阶段则把“全部预先给出”改成“需要时再取”。搜索只返回 ID 和标题，读取才有正文；订单文档又引用公共分页约定，因此一次工具结果可能改变下一步选择。工具定义是模型的**可选动作说明**，不是资料正文，也不代表已经执行。真正执行发生在 `ToolCallingManager.executeToolCalls(...)`，执行结果与调用 ID 一起进入下一轮历史。第 3、4 节会把这段代码完整展开。
+第 3 阶段则把“全部预先给出”改成“需要时再取”。搜索只返回 ID 和标题，读取才有正文；订单文档又引用公共分页约定，因此一次工具结果可能改变下一步选择。工具定义是模型的**可选动作说明**，不是资料正文，也不代表已经执行。真正执行发生在 `ToolCallingManager.executeToolCalls(...)`，执行结果与调用 ID 一起进入下一轮历史。第 3、4 节会解释相关关键代码。
 
 四个阶段的判断不能只看答案是否碰巧正确。第 0、1 阶段如果说出 `pageSize=100`，也没有依据；第 2 阶段应能从完整资料中指出最大值，并说明默认值未规定；第 3 阶段还要在轨迹中看到 `readDoc: pagination-v2`。真实模型的路径可能不同，所以请记录实际轨迹，不把下文示意输出当作固定答案。
 
-需要复查某一轮时，可以运行 `java -jar target/first-agent-0.0.1-SNAPSHOT.jar --stage=2 "你的问题"`。省略教学参数时启动 HTTP 服务，不会自动提问。
+需要复查某一轮时，把 IDEA 运行配置的 **Program arguments** 改为 `--stage=2 "你的问题"`，重新运行。清空该参数后启动 HTTP 服务，不会自动提问。
 
 ### Harness 从哪里开始
 
@@ -126,25 +121,7 @@ DeepSeek 官方文档给出的模型名是 `deepseek-flash`，对话接口为 `h
 
 在 [DeepSeek 开放平台](https://platform.deepseek.com/)创建 API Key，确认账户可调用 API。线上请求会产生用量，先使用本文两份教学资料，密钥通过环境变量提供，不写进代码或仓库。
 
-使用 IntelliJ IDEA 时，完成后文示例文件后，按第 5.1 节把 Key 配到运行配置的环境变量中；使用命令行时，选择下面对应的终端方式即可。
-
-Windows PowerShell 可用隐藏输入设置当前终端的环境变量：
-
-```powershell
-$credential = Get-Credential -UserName "deepseek" -Message "在密码栏输入 DeepSeek API Key"
-$env:DEEPSEEK_API_KEY = $credential.GetNetworkCredential().Password
-Remove-Variable credential
-```
-
-macOS / Linux 在 Bash 中执行：
-
-```bash
-read -rsp 'DeepSeek API Key: ' DEEPSEEK_API_KEY
-export DEEPSEEK_API_KEY
-printf '\n'
-```
-
-在同一个终端执行后面的启动命令。不要打印环境变量检查密钥，也不要把它贴进日志。这里不配置本地模型，Ollama 的安装与切换放在备选小节。
+在 IDEA 的 `example.agent.AgentApplication` 运行配置中，将 Key 填入 **Environment variables** 的 `DEEPSEEK_API_KEY`，具体操作见第 5.4 节。不要打印密钥，也不要把它写进代码、日志或共享运行配置。这里不配置本地模型，Ollama 的安装与切换放在备选小节。
 
 ### 2.3 建立一个独立的 Maven 项目
 
@@ -359,21 +336,11 @@ Spring Boot [官方包结构建议](https://docs.spring.io/spring-boot/reference
 
 `application.yml` 的 120 秒是单次模型请求超时，不等于 Agent 的 5 分钟轮次预算。正在进行的请求可能越过任务预算，返回后才被判定超时。[官方连接属性](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html)
 
-### 5.4 在 IDEA 或命令行启动
+### 5.4 在 IDEA 启动 HTTP 服务
 
 在 IntelliJ IDEA 中打开 `first-agent/pom.xml`，选择 JDK 21，新建 `example.agent.AgentApplication` 运行配置。把真实 Key 填在 **Environment variables** 的 `DEEPSEEK_API_KEY` 中，**Program arguments 留空**，运行后服务持续监听。不要勾选 **Store as project file / Share through VCS**，因为运行配置可能明文保存密钥。IDEA Terminal 中设置的环境变量不会自动进入工具栏 Run 配置。[JetBrains 环境变量说明](https://www.jetbrains.com/help/idea/program-arguments-and-environment-variables.html)
 
-PowerShell 命令行启动：
-
-```powershell
-$credential = Get-Credential -UserName "deepseek" -Message "在密码栏输入 DeepSeek API Key"
-$env:DEEPSEEK_API_KEY = $credential.GetNetworkCredential().Password
-Remove-Variable credential
-mvn -q -DskipTests package
-java -jar target/first-agent-0.0.1-SNAPSHOT.jar
-```
-
-启动只建立服务，不发送订单问题。由用户另开一个终端发起请求：
+启动只建立服务，不发送订单问题。保持 IDEA 中的服务运行，在 PowerShell 中发起请求：
 
 ```powershell
 $body = @{ question = '订单查询的分页参数怎么传？请给出文档依据。' } | ConvertTo-Json -Compress
@@ -427,7 +394,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 代码没有写死“先读订单接口，再读分页约定”。第二次读取来自第一份文档里的引用，并由模型选择，这正是本例中的 Agent 行为。
 
-要进一步观察反馈的作用，可以把订单文档正文改成完整的分页说明再运行。模型可能直接结束；也可以保留引用但删掉公共约定，观察它能否说明资料缺失。每次修改后记得重新打包。
+要进一步观察反馈的作用，可以把订单文档正文改成完整的分页说明，再在 IDEA 中重新运行。模型可能直接结束；也可以保留引用但删掉公共约定，观察它能否说明资料缺失。
 
 ## 7、跑通以后，做几项检查
 
@@ -436,7 +403,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 | 跨文档查询 | POST 提交“订单查询的分页参数怎么传？请给出文档依据。” | 是否读取相关正文，参数及来源是否正确 |
 | 资料没写的值 | 询问 `pageSize` 默认值 | 应说明文档未规定，不能补出 10 或 20 |
 | 超出资料范围 | 询问退款到账时间 | 应说明没有相应依据 |
-| 文档缺失 | 临时移除公共约定，再打包提问 | 应报告缺失，不能假装读过 |
+| 文档缺失 | 临时移除公共约定，在 IDEA 中重新运行并提问 | 应报告缺失，不能假装读过 |
 | 调用次数限制 | 临时将 `MAX_MODEL_CALLS` 改为 1 | 若模型请求工具，应在执行前停止 |
 | 服务不可用 | 临时将 `DEEPSEEK_BASE_URL` 指向本机未监听的端口 | 应返回失败提示，不输出虚假的成功答案 |
 

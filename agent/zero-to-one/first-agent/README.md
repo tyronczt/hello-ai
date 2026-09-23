@@ -8,19 +8,12 @@
 
 ## 启动服务
 
-在本目录打开 PowerShell，安全地给当前终端设置密钥，然后启动：
+在 IntelliJ IDEA 中打开 `pom.xml`，选择 JDK 21，创建主类为 `example.agent.AgentApplication` 的运行配置：
 
-```powershell
-$credential = Get-Credential -UserName "deepseek" -Message "在密码栏输入 DeepSeek API Key"
-$env:DEEPSEEK_API_KEY = $credential.GetNetworkCredential().Password
-Remove-Variable credential
-mvn -q -DskipTests package
-java -jar target/first-agent-0.0.1-SNAPSHOT.jar
-```
+1. 在 **Environment variables** 中设置 `DEEPSEEK_API_KEY`。
+2. **Program arguments 留空**，点击运行；服务启动后持续监听 `127.0.0.1:8080`，等待用户提交问题。
 
-默认监听 `127.0.0.1:8080`。`AGENT_PORT` 可改端口；只有放在可信鉴权入口之后，才应考虑设置 `AGENT_BIND_ADDRESS` 接受其他设备的连接。
-
-在 IntelliJ IDEA 中打开 `pom.xml` 并选择 JDK 21。新建 `example.agent.AgentApplication` 运行配置，把 `DEEPSEEK_API_KEY` 填在 **Environment variables**，**Program arguments 留空**，运行后服务会持续监听。不要勾选 **Store as project file / Share through VCS**；运行配置可能以明文保存密钥。IDEA Terminal 中设置的环境变量不会自动传给已启动 IDEA 的 Run 配置。
+不要勾选 **Store as project file / Share through VCS**；运行配置可能以明文保存密钥。IDEA Terminal 中设置的环境变量不会自动传给工具栏的 Run 配置。`AGENT_PORT` 可改端口；只有放在可信鉴权入口之后，才应考虑设置 `AGENT_BIND_ADDRESS` 接受其他设备的连接。
 
 ## 用户提交问题
 
@@ -64,13 +57,9 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 ## 可选：四阶段引导练习
 
-需要研究上下文、知识库和工具的差别时运行：
+需要研究上下文、知识库和工具的差别时，把同一个 IDEA 运行配置的 **Program arguments** 改为 `--guided` 并重新运行。程序会在 Run 控制台要求你**输入问题**，再逐阶段预测、选择运行或跳过。
 
-```powershell
-java -jar target/first-agent-0.0.1-SNAPSHOT.jar --guided
-```
-
-程序会要求你**输入问题**，再逐阶段预测、选择运行或跳过。单阶段复查可用 `java -jar target/first-agent-0.0.1-SNAPSHOT.jar --stage=3 "你的问题"`。这两个模式是本地教学入口，不启动 HTTP 服务。
+单阶段复查时，将 **Program arguments** 改为 `--stage=3 "你的问题"`。这两个模式是本地教学入口，不启动 HTTP 服务；要重新提供 HTTP 接口，请清空 **Program arguments** 后运行。
 
 ## 验证
 
