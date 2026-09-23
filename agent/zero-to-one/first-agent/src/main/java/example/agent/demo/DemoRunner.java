@@ -21,6 +21,7 @@ public class DemoRunner implements ApplicationRunner {
         this.agent = agent;
     }
 
+    /** 按启动参数选择四阶段交互练习或单阶段复查；HTTP 模式下不触发模型请求。 */
     @Override
     public void run(ApplicationArguments args) {
         if (args.containsOption("guided")) {
@@ -46,6 +47,7 @@ public class DemoRunner implements ApplicationRunner {
         show(new AskDTO(question), stage);
     }
 
+    /** 同一个用户问题依次对照四个阶段；每轮先预测，再由用户决定是否调用线上模型。 */
     private void guided() {
         // 同一个问题跑四轮，读者才能把答案变化归因于规则、资料和工具。
         var input = new Scanner(System.in);
@@ -76,9 +78,10 @@ public class DemoRunner implements ApplicationRunner {
             if (stage == 3) {
                 log.info("[工具定义] searchDocs(keyword)：返回 ID/标题；readDoc(docId)：返回正文。");
             }
-            // 预测和选择发生在请求之前，跳过或退出不产生模型调用。
-            String prediction = read(input, "你预测它会怎样回答或行动？\n> ");
-            if (prediction == null) return;
+            // 可以在预测处直接跳过或退出；写下预测后仍由用户决定是否调用线上模型。
+            String prediction = read(input, "你预测它会怎样回答或行动？输入 s 跳过，输入 q 退出：\n> ");
+            if (prediction == null || prediction.equalsIgnoreCase("q")) return;
+            if (prediction.equalsIgnoreCase("s")) continue;
             String choice = read(input, "回车运行；输入 s 跳过本阶段；输入 q 退出：");
             if (choice == null || choice.equalsIgnoreCase("q")) return;
             if (choice.equalsIgnoreCase("s")) continue;
@@ -95,6 +98,7 @@ public class DemoRunner implements ApplicationRunner {
         log.info("练习结束。请用实际读取的文档核对最终答案。不同模型运行路径可能不同。");
     }
 
+    /** 输出指定阶段的实际轨迹，并区分候选答案与任务停止原因。 */
     private void show(AskDTO request, int stage) {
         AgentResultDTO result = agent.runStage(request, stage);
         result.trace().forEach(item -> log.info("{}", item));

@@ -20,6 +20,7 @@ public class AgentController {
         this.agent = agent;
     }
 
+    /** 校验本次问题并交给 Agent 处理；将应用层结果转换为 HTTP 响应。 */
     @PostMapping("/ask")
     public AskVO ask(@Valid @RequestBody AskQuery query) {
         // 用户的问题来自本次 POST；stage 和用户身份都不从请求体传给 Agent。
