@@ -367,32 +367,21 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 ## 6、怎样从输出判断它在做什么
 
-下面是一条可能的 HTTP 响应示意，不是对真实模型输出的保证。`trace` 的顺序就是该请求内实际发生的顺序：
+以一次实际请求为例：你提交“订单查询的分页参数怎么传？请给出文档依据”，响应中的 `trace` 有 `[模型调用 1/6]`、`[模型调用 2/6]`、`[模型调用 3/6]`。把它按“模型决定 → Java 执行 → 结果进入下一轮”读，就能看清整个过程：
 
-```json
-{
-  "status": "COMPLETED",
-  "answer": "pageNo 从 1 开始，pageSize 最大为 100。资料没有规定 pageSize 的默认值。来源：order-api-v2、pagination-v2。",
-  "trace": [
-    "[模型调用 1/6]",
-    "请求工具：searchDocs，调用 ID：...",
-    "searchDocs: 命中 1 份文档",
-    "[模型调用 2/6]",
-    "请求工具：readDoc，调用 ID：...",
-    "readDoc: order-api-v2",
-    "readDoc 返回：来源：order-api-v2 / 订单查询接口 v2\n正文：订单查询支持分页，具体参数遵循《公共分页约定 v2》，文档 ID 为 pagination-v2。",
-    "[模型调用 3/6]",
-    "请求工具：readDoc，调用 ID：...",
-    "readDoc: pagination-v2",
-    "readDoc 返回：来源：pagination-v2 / 公共分页约定 v2\n正文：pageNo 从 1 开始；pageSize 最大为 100。本文未规定 pageSize 的默认值。",
-    "[模型调用 4/6]"
-  ]
-}
-```
+| 顺序 | 模型这次返回了什么 | Java 做了什么 | 下一次模型调用能看到什么 |
+|---|---|---|---|
+| 第 1 次模型调用 | 提出 **两次** `searchDocs` 请求 | 执行两次搜索，分别返回 `order-api-v2`、`pagination-v2` 的 ID 和标题 | 搜索结果；**还没有文档正文** |
+| 第 2 次模型调用 | 根据搜索结果提出 **两次** `readDoc` 请求 | 读取两份固定教学文档，把正文作为工具结果回填 | 订单接口引用分页约定，以及 `pageNo`、`pageSize` 的具体规则 |
+| 第 3 次模型调用 | 不再请求工具，返回文字答案 | 将文字放入 `answer`，以 `COMPLETED` 结束本次任务 | 本次任务结束 |
 
-关注 `readDoc` 的实际记录，而不只是答案里声称的来源。模型可能换关键词、一次请求多个工具，或直接搜索分页文档，路径不必逐行一致。判断重点是它是否读到了支持答案的正文。
+因此，`1/6` 表示“最多允许 6 次模型调用中的第 1 次”，不是第 1 个工具。这里实际调用模型 **3 次**，执行工具 **4 次**；同一次模型响应可以包含多个工具请求。`请求工具：...` 是模型提出的调用意图，接下来的 `searchDocs 返回：...`、`readDoc 返回：...` 才表明 Java 已执行并得到结果。`调用 ID` 用于把工具结果对应回这次工具请求；它不是文档 ID，文档 ID 是 `order-api-v2` 这类值。
 
-代码没有写死“先读订单接口，再读分页约定”。第二次读取来自第一份文档里的引用，并由模型选择，这正是本例中的 Agent 行为。
+代码中的分界点是 `DocAgent` 的 `model.call(prompt)` 与 `manager.executeToolCalls(prompt, response)`：前者把当前消息发给模型，后者才执行获准的 Java 工具，并把结果加入下一轮消息历史。模型不能直接运行 `DocTools`。第 3 次返回没有工具请求，循环便取出文字作为候选答案，经 Controller 包装成 JSON 返回。HTTP `200` 表示接口完成响应，`COMPLETED` 表示 Agent 得到候选答案；两者都不自动证明答案正确。
+
+本例 `DocTools` 查询的是 Java 代码里固定的两份教学文档，没有查询真实订单、数据库或向量库。要核验这次答案，重点看 `readDoc 返回` 是否真的包含“`pageNo` 从 1 开始、`pageSize` 最大为 100、默认值未规定”。模型下次可能先读一份文档再读另一份，也可能一次请求多个工具；程序没有写死固定路径。
+
+想在 IDEA 中亲眼看一遍，可以用 **Debug** 启动 HTTP 服务，并依次在 `AgentController.ask()`、`DocAgent` 的 `model.call(prompt)` 和 `manager.executeToolCalls(prompt, response)`、`DocTools.searchDocs()` / `readDoc()` 处打断点。发送同一个 POST：先看 `query.question()` 确认问题来自用户，再看每次模型响应的 `hasToolCalls()` 和工具请求，进入工具方法看真实参数与返回值，最后看 `result.conversationHistory()` 怎样成为下一次调用的 `prompt`。响应里的 `trace` 没记录搜索关键词，单凭截图不能反推出模型实际传了什么关键词。
 
 要进一步观察反馈的作用，可以把订单文档正文改成完整的分页说明，再在 IDEA 中重新运行。模型可能直接结束；也可以保留引用但删掉公共约定，观察它能否说明资料缺失。
 
