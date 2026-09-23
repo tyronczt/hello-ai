@@ -1,0 +1,29 @@
+spring:
+  main:
+    banner-mode: off
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      timeout: 120s
+      max-retries: 0
+      chat:
+        completions-path: /chat/completions
+        options:
+          model: deepseek-flash
+          temperature: 0
+          max-tokens: 2048
+          extra-body:
+            thinking:
+              type: disabled
+      embedding:
+        enabled: false
+    retry:
+      max-attempts: 1
+logging:
+  level:
+    root: WARN
+    example.agent.demo: INFO
+server:
+  address: ${AGENT_BIND_ADDRESS:127.0.0.1}
+  port: ${AGENT_PORT:8080}
