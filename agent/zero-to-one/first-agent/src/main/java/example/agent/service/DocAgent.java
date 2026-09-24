@@ -98,8 +98,9 @@ public class DocAgent {
 
     /** 每次调用独立创建消息、预算和轨迹；工具回调复用本次任务的轨迹记录器。 */
     private AgentResultDTO execute(String question, int stage, String taskId) {
-        // 工具回调可能写入轨迹；同步列表避免回调与主循环同时记录时丢失条目。
-        // 返回结果会复制列表，调用结束后不再暴露可变集合。
+        // 本次请求的主循环和工具回调都会向 trace 添加事件；synchronizedList 为 add 等单次操作加锁，
+        // 避免同一请求内并发写入破坏列表。它不保证遍历等组合操作安全；本例在工具执行结束后
+        // 才由 AgentResultDTO 复制列表，返回给调用方的是不可变快照。
         List<String> trace = Collections.synchronizedList(new ArrayList<>());
         // Web 层先做 Bean Validation；这里仍保护命令行入口和其他未来调用方。
         if (question == null || question.isBlank() || question.length() > 1000) {
@@ -130,15 +131,23 @@ public class DocAgent {
                 return stopped("模型调用失败，请检查服务状态与配置。", trace);
             }
         }
-        // Spring AI 2.0 的 OpenAI 适配器需要具体选项类型。
-        // thinking 是 DeepSeek 请求体的顶层扩展字段；每次请求重新绑定带独立轨迹的工具。
+        // 阶段 3 使用 Spring AI 的 OpenAI 兼容选项，配置模型参数和可请求的工具。
+        // 这里只注册工具，不会执行工具；下面收到模型的工具请求后才交给 ToolCallingManager。
         var options = OpenAiChatOptions.builder()
+                // 本轮使用 DeepSeek 模型；API 地址和密钥由 application.yml / 环境变量配置。
                 .model("deepseek-flash")
+                // 降低输出随机性，便于比较教学轨迹；相同问题仍不保证每次走相同工具路径。
                 .temperature(0.0)
+                // 限制单次模型回复的 Token 数，不限制整个 Agent 的模型或工具调用次数。
                 .maxTokens(2048)
+                // Spring AI 将 extraBody 展开到请求 JSON 顶层；这里显式关闭 DeepSeek 思考模式。
                 .extraBody(Map.of("thinking", Map.of("type", "disabled")))
+                // 将 DocTools 中的 @Tool 方法注册为可请求的工具；每个请求创建自己的实例和轨迹回调。
+                // 模型只能提出调用，Java 仍要检查名称、预算和参数后才能执行。
                 .toolCallbacks(ToolCallbacks.from(new DocTools(event -> addTrace(trace, taskId, event))))
                 .build();
+        // 初始消息：阶段 3 只有任务规则和用户问题，没有文档正文；工具定义来自上面的 options。
+        // Prompt 把消息和选项合在一起，供第一次 model.call(prompt) 使用。
         var prompt = new Prompt(initialMessages(question, stage), options);
         // 任务预算只在模型调用前后检查，不能中断正在阻塞的 HTTP 请求。
         long started = System.nanoTime();

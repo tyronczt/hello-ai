@@ -78,11 +78,11 @@ public class DemoRunner implements ApplicationRunner {
             if (stage == 3) {
                 log.info("[工具定义] searchDocs(keyword)：返回 ID/标题；readDoc(docId)：返回正文。");
             }
-            // 可以在预测处直接跳过或退出；写下预测后仍由用户决定是否调用线上模型。
-            String prediction = read(input, "你预测它会怎样回答或行动？输入 s 跳过，输入 q 退出：\n> ");
+            // s 只跳过当前阶段的实际模型调用；预览已显示，下一轮仍会继续。
+            String prediction = read(input, "你预测它会怎样回答或行动？输入 s 不调用模型并进入下一阶段，输入 q 退出：\n> ");
             if (prediction == null || prediction.equalsIgnoreCase("q")) return;
             if (prediction.equalsIgnoreCase("s")) continue;
-            String choice = read(input, "回车运行；输入 s 跳过本阶段；输入 q 退出：");
+            String choice = read(input, "回车调用模型；输入 s 不调用模型并进入下一阶段；输入 q 退出：");
             if (choice == null || choice.equalsIgnoreCase("q")) return;
             if (choice.equalsIgnoreCase("s")) continue;
             if (!choice.isBlank()) {

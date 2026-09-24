@@ -59,7 +59,7 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 把 IDEA 运行配置的 **Program arguments（程序实参）** 改为 `--guided`，重新运行。`DemoRunner` 会请你输入问题，再依次展示四个阶段准备给模型看的内容。每轮可以先猜答案，再选择：
 
-- 在“预测”提示处输入一次 `s`：直接跳过这一轮。没有 API Key 也能这样看预览，但看不到模型的真实回答。
+- 在“预测”提示处输入一次 `s`：当前阶段的预览已经显示，接下来不调用模型，直接展示下一阶段。没有 API Key 也能看完四轮预览，但不会得到真实回答。
 - 想看真实回答：先写下预测，再在下一步“回车运行”处按回车。此时会调用 `DocAgent` 和线上 DeepSeek，需要设置 `DEEPSEEK_API_KEY`，并会产生用量。
 - 输入 `q`：退出。
 
