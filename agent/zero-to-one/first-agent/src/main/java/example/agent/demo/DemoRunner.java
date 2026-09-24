@@ -98,10 +98,10 @@ public class DemoRunner implements ApplicationRunner {
         log.info("练习结束。请用实际读取的文档核对最终答案。不同模型运行路径可能不同。");
     }
 
-    /** 输出指定阶段的实际轨迹，并区分候选答案与任务停止原因。 */
+    /** 运行指定阶段并展示最终结果；执行轨迹由 DocAgent 实时写入日志。 */
     private void show(AskDTO request, int stage) {
         AgentResultDTO result = agent.runStage(request, stage);
-        result.trace().forEach(item -> log.info("{}", item));
+        // DocAgent 已在事件发生时输出轨迹；这里仅展示最终答案，避免同一条轨迹打印两次。
         if (result.status() == AgentResultDTO.Status.COMPLETED) {
             log.info("候选答案（请核对来源）：\n{}", result.answer());
         } else {

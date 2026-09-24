@@ -235,7 +235,7 @@ var options = OpenAiChatOptions.builder()
         .temperature(0.0)
         .maxTokens(2048)
         .extraBody(Map.of("thinking", Map.of("type", "disabled")))
-        .toolCallbacks(ToolCallbacks.from(new DocTools(trace::add)))
+        .toolCallbacks(ToolCallbacks.from(new DocTools(event -> addTrace(trace, taskId, event))))
         .build();
 ```
 
@@ -260,7 +260,7 @@ if (calls.stream().anyMatch(call -> !ALLOWED_TOOLS.contains(call.name()))) {
 }
 toolCalls += calls.size();
 for (var call : calls) {
-    trace.add("请求工具：" + call.name() + "，调用 ID：" + call.id());
+    addTrace(trace, taskId, "请求工具：" + call.name() + "，调用 ID：" + call.id());
 }
 // Java 执行允许的工具；Manager 将工具请求、调用 ID 和结果一并写回历史。
 // 下一轮必须用这份历史，模型才能基于刚读到的文档继续决策。
@@ -272,13 +272,32 @@ prompt = new Prompt(result.conversationHistory(), options);
 
 ### 4.3 读懂最关键的几行
 
-`ToolCallbacks.from(new DocTools(trace::add))` 把两个 Java 方法交给 Spring AI，作为模型可请求的工具；`trace::add` 记录这次请求里的执行过程。上面的 `OpenAiChatOptions` 还指定了 DeepSeek 模型、单次输出上限，并关闭思考模式。这里使用这个具体选项类型，是为了匹配本项目使用的 Spring AI OpenAI 适配器。
+`ToolCallbacks.from(...)` 把两个 Java 方法交给 Spring AI，作为模型可请求的工具。每次工具执行都会调用 `addTrace`：事件原文进入本次 HTTP 响应的 `trace`，日志只记录带 `taskId` 的过程信息。上面的 `OpenAiChatOptions` 还指定了 DeepSeek 模型、单次输出上限，并关闭思考模式。
+
+```java
+// 本次教学轨迹供接口返回；运行日志只记录工具名、结果状态和长度。
+private static void addTrace(List<String> trace, String taskId, String event) {
+    trace.add(event);
+    if (!log.isInfoEnabled()) return;
+    if (event.startsWith("readDoc 返回：") || event.startsWith("searchDocs 返回：")) {
+        String tool = event.startsWith("readDoc") ? "readDoc" : "searchDocs";
+        String outcome = event.contains("返回：INVALID_ARGUMENT") ? "INVALID_ARGUMENT"
+                : event.contains("返回：NOT_FOUND") ? "NOT_FOUND" : "OK";
+        log.info("Agent 工具返回：taskId={}，tool={}，outcome={}，chars={}",
+                taskId, tool, outcome, event.length());
+        return;
+    }
+    log.info("Agent 轨迹：taskId={}，{}", taskId, event.replace("\r", "\\r").replace("\n", "\\n"));
+}
+```
+
+`application.yml` 为 `example.agent.service` 开启 INFO 日志。`DemoRunner` 不再重复打印整份轨迹；在 IDEA 里运行练习时，你会按发生顺序看到模型调用、工具请求和返回状态。`DocAgent` 日志还记录每次模型调用、工具批次及整次任务的耗时；停止原因用 WARN，执行异常用 ERROR 记录异常类型和堆栈位置。`DocAgent` 不主动记录问题、候选答案、API Key 或工具正文；**教学 `trace` 仍会返回固定公开资料的正文**，接真实业务文档时必须收紧这部分内容。
 
 `model.call(prompt)` 负责把消息发给模型。有些模型响应会同时带文字和工具请求；只要有工具请求，程序就先处理工具，不把那段文字当最终答案。
 
 `manager.executeToolCalls(prompt, response)` 才真正调用 Java 方法。`conversationHistory()` 保存了前面的对话、模型这次请求了哪个工具、工具返回了什么。把它交给下一次 `model.call`，模型才知道刚才查到了什么。
 
-`prompt` 和计数器都是 `run` 的局部变量，每次任务重新创建。本例不会把上一个问题的历史带入下一个问题，也没有实现跨轮用户会话记忆。
+`prompt` 和计数器都是本次 `execute` 调用的局部变量，每次任务重新创建。本例不会把上一个问题的历史带入下一个问题，也没有实现跨轮用户会话记忆。
 
 ### 4.4 为什么要有停止条件
 
