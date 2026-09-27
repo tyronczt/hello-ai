@@ -204,6 +204,7 @@ public class DocAgent {
                     log.info("工具批次完成：taskId={}，round={}，count={}，durationMs={}",
                             taskId, round, calls.size(), Duration.ofNanos(System.nanoTime() - toolsStarted).toMillis());
                 }
+                // 把模型工具请求和对应工具响应保留在消息历史中，供模型继续决策。
                 prompt = new Prompt(result.conversationHistory(), options);
                 phase = "model";
             }

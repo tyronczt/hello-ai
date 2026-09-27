@@ -3,6 +3,8 @@ package example.agent.tool;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
@@ -29,7 +31,7 @@ public class DocTools {
     /** 阶段 2 将全部固定资料直接放进初始请求，用来对照阶段 3 的按需读取。 */
     public static String demoContext() {
         return DOCS.stream().map(doc -> doc.id() + " / " + doc.title() + "：" + doc.content())
-                .collect(java.util.stream.Collectors.joining("\n"));
+                .collect(Collectors.joining("\n"));
     }
 
     /**
