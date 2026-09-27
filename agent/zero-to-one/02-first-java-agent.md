@@ -2,25 +2,20 @@
 
 上一篇[《什么是 Agent》](01-what-is-agent.md)讲了一个资料助手。这次我们用 Java 做出它：你问“订单查询的分页参数怎么传”，它去找文档、读正文，再根据读到的内容回答。文档只有两份，方便你看清每一步。
 
-[完整代码：GitHub / agent/zero-to-one](https://github.com/tyronczt/hello-ai/tree/main/agent/zero-to-one)。本文只展示理解机制所需的关键代码，完整项目、配置与注释以仓库为准。
+这次实验要看清三件事：**回答规则不能代替资料；资料可以直接放进上下文，也可以由工具按需取回；工具结果必须交回模型，它才能决定下一步。** 全文沿用同一个分页问题。先用 `--guided` 比较四个阶段，再看资料、工具和循环怎样写成代码，最后把它接成 HTTP 接口。
 
-先在 IDEA 中用 `--guided` 做一个不调用模型的练习：输入自己的问题，看看四个阶段分别准备了哪些内容。**只看预览不需要 API Key，也不产生模型调用费用。**看懂之后，再决定是否配置 Key 运行模型；HTTP 接口放在第 5 节讲。
+[完整代码：GitHub / agent/zero-to-one](https://github.com/tyronczt/hello-ai/tree/main/agent/zero-to-one)。本文节选关键代码，完整项目、配置与注释以仓库为准。
 
 ## 0、先用 `--guided` 看四次变化
 
-在 IDEA 中打开 `first-agent/pom.xml`，选择 JDK 21，运行 `example.agent.AgentApplication`。在运行配置的 **Program arguments（程序实参）** 中填 `--guided`。程序会在 Run 控制台等你输入问题。
+在 IDEA 中打开 `first-agent/pom.xml`，选择 JDK 21，运行 `example.agent.AgentApplication`。在运行配置的 **Program arguments（程序实参）** 中填 `--guided`。程序会在 Run 控制台等你输入问题；四轮都使用同一个问题，例如“订单查询的分页参数怎么传？请给出文档依据”。
 
-接下来一直用同一个问题，例如“订单查询的分页参数怎么传？”。每一轮，程序先展示**准备给模型看的内容**，你先猜它会怎么答，再选择：
+| 你想观察什么 | 在控制台怎么做 | 能确认什么 |
+|---|---|---|
+| 只看准备给模型的内容 | 每轮预览出现后，在“你预测它会怎样回答或行动？”处输入 `s` | 跳过本轮模型调用，继续下一阶段；无需 API Key、不会产生模型用量 |
+| 比较真实回答和工具过程 | 先写下预测，再在下一步按回车运行 | 调用 DeepSeek；需在运行配置的 **Environment variables（环境变量）** 中设置 `DEEPSEEK_API_KEY`，会产生用量 |
 
-- 在“你预测它会怎样回答”处直接输入 `s`：本轮只看已经显示的预览，不调用模型、不生成实际回答，程序直接展示下一阶段。没有 Key 也可以这样看完四轮。
-- 想看真实回答：先写下预测，再在下一步“回车运行”处按回车。这会调用 DeepSeek，需要在运行配置的 **Environment variables（环境变量）** 中设置 `DEEPSEEK_API_KEY`，并会产生用量。
-- 输入 `q`：退出练习。
-
-空问题不会执行。Key 的配置和保管方式见第 1.2 节。
-
-如果这次只想免费预览，每轮看到“你预测它会怎样回答”时直接输入一次 `s`。它只跳过**当前阶段的实际执行**，不会退出整个练习；四轮都这样操作，就不会发起线上请求。想认真对照结果时，先写下预测，再在下一步决定按回车调用模型，还是输入 `s` 看下一阶段。
-
-下面是只看预览、跳过这一轮的操作。`[system]` 是给模型的回答规则，`[user]` 是你的问题：
+输入 `q` 可以退出练习。Key 的配置和保管方式见第 1.2 节；只看预览可以先跳过。下面的例子在阶段 1 输入 `s`，因此直接进入阶段 2，没有产生阶段 1 的实际回答：
 
 ```text
 === 阶段 1 增加任务规则 ===
@@ -32,9 +27,7 @@
 === 阶段 2 放入两份文档 ===
 ```
 
-这里选 `s`，意思是“阶段 1 的预览已经看过，这一轮不调用模型”，所以没有实际回答，接着显示阶段 2。若写下预测后在下一步按回车，才会显示“实际执行”和模型回答。第 3 阶段实际运行后，还可以看它请求了哪些工具、Java 返回了什么。屏幕上的预览是便于阅读的摘要，不是发给模型的原始 HTTP 报文。
-
-四轮使用同一个问题、同一个模型，只改变它能看到的信息和能做的事。对照上一篇[《什么是 Agent》第 2 节](01-what-is-agent.md)，每轮问自己三件事：**模型现在知道什么？它能采取什么行动？下一步由谁决定？**
+预览是便于阅读的摘要，不是发给模型的原始 HTTP 报文。四轮的变化如下；对照上一篇[《什么是 Agent》第 2 节](01-what-is-agent.md)，每轮问自己：**模型知道什么？它能采取什么行动？下一步由谁决定？**
 
 | 阶段 | 这轮增加了什么 | 对应上一篇的概念 | 观察重点 |
 |---|---|---|---|
@@ -43,35 +36,21 @@
 | 2：直接给资料 | 两份文档的完整正文 | Context、知识来源、上下文窗口 | 能否从正文找依据；一次放入全部资料有什么代价 |
 | 3：给查资料的工具 | `searchDocs`、`readDoc` 的使用说明 | Tool Calling、反馈循环、Harness | 模型请求什么；Java 执行后，模型怎样利用结果继续 |
 
-**阶段 0：先看模型自己会怎样回答。** 这轮只发送你的问题。模型可以根据训练中学到的常识组织文字，但它看不到本项目的两份文档。即使碰巧说对 `pageSize` 最大值，也不能说明它找到了项目依据；如果自信地编出默认值，就对应上一篇讲的“幻觉”。
+![在 IDEA 中运行 --guided 四阶段对照实验的操作动图](../../assets/02-first-java-agent/article/agent-learn-guided.gif)
 
-**阶段 1：加规则，不等于加事实。** 程序在问题前加入 `SystemMessage`，要求按资料回答、缺少依据时说未知。这是提示词，也是本轮上下文的一部分；但本轮仍没有文档正文和工具。你可以观察：模型会承认资料不足，还是仍然给出看似确定的数值？
+先比较**阶段 0 与 1**：阶段 0 只有问题；阶段 1 多了“依据资料、未知就说明未知”的规则，但仍没有项目文档。模型即使碰巧说对 `pageSize`，也不能证明它找到了项目依据。再比较**阶段 1 与 2**：阶段 2 把两份正文直接放进本轮上下文，模型这时才有机会从资料读出 `pageNo`、`pageSize` 的规则。资料越多，这种全文发送方式消耗的 Token 越多，也会受上下文窗口限制。
 
-**阶段 2：把资料直接放进上下文。** 程序把两份固定教学文档的正文随问题一起发送。现在模型有机会读出 `pageNo` 从 1 开始、`pageSize` 最大 100，以及“默认值未规定”。这展示了知识怎样进入当前请求；它不是跨请求记忆，也**没有检索过程**，所以不要把这一步叫作完整的 RAG。资料只有两份时这样最直观；资料越多，发送的 Token 越多，还会受上下文窗口限制。
+最后比较**阶段 2 与 3**：阶段 3 初始消息不含正文，只提供搜索和读取工具。模型提出工具请求，Java 检查并执行，再把结果交回模型；模型可以根据新资料继续查询或回答。模型可能先搜索，也可能直接请求读取，实际顺序以运行记录为准。四阶段是程序安排的教学对照；在阶段 3 内部，后续行动才由模型根据工具反馈参与选择。
 
-**阶段 3：让模型按需取资料。** 初始消息不带文档正文，只声明可以搜索和读取。模型返回 `readDoc` 之类的**工具请求**后，Java 检查并执行工具，再把结果交给模型。若读到订单文档引用 `pagination-v2`，模型可以据此继续读取，也可以在资料不足时结束；你要看实际轨迹，不能预设它一定按固定顺序搜索。`DocAgent` 负责开放工具名单、调用次数、耗时和停止条件，这些围绕模型运行的控制代码就是本例的最小 Harness。
+如果只输入 `s`，你确认的是每轮准备了什么，**不能据此断言模型实际调用了工具**。实际运行阶段 3 后，按这三步核对：
 
-这里也能分清上一篇的两个问题：**RAG 关心回答依据从哪里来，Agent 关心下一步行动如何选择。** 第 3 阶段用简单的标题检索取得资料，没有向量数据库；它体现 Agent 式循环的关键，是模型根据工具反馈决定继续查还是回答。四个阶段依次演示的是程序预先安排的教学流程；你按 `s` 或回车决定是否运行练习，**不等于模型决定调用哪个工具**。阶段 0～2 只有一次模型调用，尚没有“行动 → 反馈 → 再决定”的循环。
+1. 找到“请求工具”：模型提出了什么动作？
+2. 找到“`readDoc` 返回”：Java 是否读到了 `pagination-v2` 的正文？
+3. 对照候选答案：参数和来源是否由读到的正文支持？
 
-代码里，`UserMessage` 装你的问题，`SystemMessage` 装回答规则。第 2 阶段还会用 `DocTools.demoContext()` 把两份固定文档一起放进去。`DemoRunner` 的预览和真正执行都调用下面这个方法，所以初始消息一致；第 3 阶段的工具定义在后面的工具配置代码中，不在这份消息列表里：
+工具顺序可能变化，但答案碰巧正确、却没有读到所需文档，不算通过这次资料查询实验。详细读法见第 5 节。
 
-```java
-public static List<Message> initialMessages(String question, int stage) {
-    if (stage == 0) {
-        return List.of(new UserMessage(question));
-    }
-    return List.of(new SystemMessage(SYSTEM), new UserMessage(stage == 2
-            ? "教学资料：\n" + DocTools.demoContext() + "\n问题：" + question : question));
-}
-```
-
-第 3 阶段若实际运行，在轨迹里先看“请求工具”，再看“`readDoc` 返回”：前者是模型提出的动作，后者才是 Java 执行后得到的反馈。搜索只返回 ID 和标题，读取才返回正文；模型下一轮能看到刚才返回的内容。这些结果是**本次任务的临时状态**，不会自动成为下一个用户请求的会话记忆。第 3、4 节会对照代码拆开这三步。
-
-判断练习是否成功，不能只看数字有没有猜对。第 0、1 阶段即使说对 `pageSize=100`，也没有读到项目文档；第 2 阶段应能从正文找到依据；第 3 阶段还应在执行记录中看到它读了 `pagination-v2`。只输入 `s` 看预览时，能确认程序准备了什么，**不能证明模型真的调用了工具**。
-
-上一篇还讲了会话记忆、MCP 和 Skills。本例的每次请求都重新开始，**没有跨请求记忆**；两个工具是本地 Java 方法，**没有使用 MCP**；任务规则是一段提示词，**没有做成 Skill**。先看懂这次的上下文与工具反馈，再决定是否需要这些能力。
-
-需要复查某一轮时，把 IDEA 运行配置的 **Program arguments** 改为 `--stage=2 "你的问题"`，重新运行。清空该参数后启动 HTTP 服务，不会自动提问。
+需要单独重跑某一轮时，把 **Program arguments** 改为 `--stage=2 "你的问题"`，重新运行；清空参数则启动 HTTP 服务，不会自动提问。
 
 ## 1、准备环境和项目
 
@@ -79,21 +58,15 @@ public static List<Message> initialMessages(String question, int stage) {
 
 第一次跟着做，先确认 IDEA 使用 JDK 21、项目能导入 Maven。只看引导预览无需 API Key；需要调用模型时，再按第 1.2 节配置。下面的 Spring Boot 和 Spring AI 版本已经写在项目的 `pom.xml` 中，不用在 IDEA 里逐项填写。
 
-| 项目 | 本篇选择 |
-|---|---|
-| JDK | 21 |
-| Maven | 3.9.x |
-| Spring Boot | 4.1.1 |
-| Spring AI | 2.0.1 |
-| 模型服务 | DeepSeek 线上 API：`https://api.deepseek.com` |
-| 模型 | `deepseek-flash` |
-| 范围 | 本篇只验证 DeepSeek 主线；本地模型作为后续迁移练习 |
-
-截至 2026-09-23，Spring 官方把 Spring AI 2.0.1 列为最新稳定版；它面向 Spring Boot 4.0/4.1，本例使用已发布的 Boot 4.1.1。版本号是本篇可复现组合，不是要求你在自己的业务项目里立刻升级。[Spring AI 稳定版本](https://docs.spring.io/spring-ai/reference/spring-projects.html) · [2.0 升级说明](https://docs.spring.io/spring-ai/reference/upgrade-notes.html) · [Spring Boot 4.1.1 运行要求](https://docs.spring.io/spring-boot/system-requirements.html)
-
-DeepSeek 官方文档给出的模型名是 `deepseek-flash`，对话接口为 `https://api.deepseek.com/chat/completions`。本文通过 Spring AI 的 OpenAI 兼容协议适配器访问这个地址，实际服务和密钥均来自 DeepSeek。[DeepSeek 首次调用 API](https://api-docs.deepseek.com/zh-cn/)
-
-本篇使用非思考模式，把注意力放在工具循环上。DeepSeek 默认开启思考模式，开启后还需要遵守 `reasoning_content` 的历史回传要求，因此配置会显式发送 `thinking.type: disabled`，不能仅靠删掉思考参数来关闭。[DeepSeek 思考模式](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)
+| 项目          | 本篇选择                                       |
+| ----------- | ------------------------------------------ |
+| JDK         | 21                                         |
+| Maven       | 3.9.x                                      |
+| Spring Boot | 4.1.1                                      |
+| Spring AI   | 2.0.1                                      |
+| 模型服务        | DeepSeek 线上 API：`https://api.deepseek.com` |
+| 模型          | `deepseek-flash`                           |
+| 范围          | 本篇只验证 DeepSeek 主线；本地模型作为后续迁移练习             |
 
 ### 1.2 准备 DeepSeek API Key
 
@@ -101,7 +74,37 @@ DeepSeek 官方文档给出的模型名是 `deepseek-flash`，对话接口为 `h
 
 在 [DeepSeek 开放平台](https://platform.deepseek.com/)创建 API Key，确认账户可调用 API。线上请求会产生用量，先使用本文两份教学资料，密钥通过环境变量提供，不写进代码或仓库。
 
-在 IDEA 的 `example.agent.AgentApplication` 运行配置中，将 Key 填入 **Environment variables** 的 `DEEPSEEK_API_KEY`，具体操作见第 5.4 节。不要打印密钥，也不要把它写进代码、日志或共享运行配置。这里不配置本地模型，Ollama 的安装与切换放在备选小节。
+在 IDEA 的 `example.agent.AgentApplication` 运行配置中，将 Key 填入 **Environment variables** 的 `DEEPSEEK_API_KEY`，HTTP 模式的运行步骤见第 6.4 节。不要打印密钥，也不要把它写进代码、日志或共享运行配置。这里不配置本地模型，Ollama 的安装与切换放在备选小节。
+
+`application.yml` 的关键配置节选：
+
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      timeout: 120s
+      max-retries: 0
+      chat:
+        completions-path: /chat/completions
+        options:
+          model: deepseek-flash
+          max-tokens: 2048
+          extra-body:
+            thinking:
+              type: disabled
+```
+
+`openai` 是 Spring AI 的协议适配配置名，不代表请求发给 OpenAI。`base-url` 和 `completions-path` 拼出 DeepSeek 的实际地址；显式设置路径，避免误用默认的 `/v1/chat/completions`。
+
+`extra-body` 会将 `thinking` 放入请求 JSON 顶层，实际发送的是 `"thinking": {"type": "disabled"}`，不是一个叫 `extra_body` 的嵌套字段。[Spring AI OpenAI 配置](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html)
+
+完整配置还关闭了框架层重试，便于统计调用次数；`max-tokens` 只限制单次输出，不能代替整个任务的次数预算。HTTP 默认只监听 `127.0.0.1:8080`，教学日志单独设为 `INFO`，完整值见仓库配置文件。
+
+DeepSeek 官方文档给出的模型名是 `deepseek-flash`，对话接口为 `https://api.deepseek.com/chat/completions`。本文通过 Spring AI 的 OpenAI 兼容协议适配器访问这个地址，实际服务和密钥均来自 DeepSeek。[DeepSeek 首次调用 API](https://api-docs.deepseek.com/zh-cn/)
+
+本篇使用非思考模式，把注意力放在工具循环上。DeepSeek 默认开启思考模式，开启后还需要遵守 `reasoning_content` 的历史回传要求，因此配置会显式发送 `thinking.type: disabled`，不能仅靠删掉思考参数来关闭。[DeepSeek 思考模式](https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/)
 
 ### 1.3 打开现成的 Maven 项目
 
@@ -131,31 +134,11 @@ first-agent/
 | HTTP 接口 | `spring-boot-starter-webmvc` |
 | 请求校验 | `spring-boot-starter-validation` |
 
-`application.yml` 的关键配置节选：
+导览展示 **HTTP 入口**：`AgentController.ask() → DocAgent.process() → run() → execute()`；第 0 节的 `--guided` 则由 `DemoRunner` 调用 `DocAgent.runStage()`。两条路径都进入 `DocAgent`，但只有 HTTP 入口固定执行第 3 阶段。你可以在下图切换「调用流程」和「交互时序」，点击节点查看源码，再用「直接回答」「工具循环」「停止条件」聚焦分支。
 
-```yaml
-spring:
-  ai:
-    openai:
-      api-key: ${DEEPSEEK_API_KEY}
-      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-      timeout: 120s
-      max-retries: 0
-      chat:
-        completions-path: /chat/completions
-        options:
-          model: deepseek-flash
-          max-tokens: 2048
-          extra-body:
-            thinking:
-              type: disabled
-```
+<iframe src="first-agent/ask-call-flow.html" title="AgentController.ask 调用流程与交互时序导览" width="100%" height="960" loading="lazy" style="border: 0;"></iframe>
 
-`openai` 是 Spring AI 的协议适配配置名，不代表请求发给 OpenAI。`base-url` 和 `completions-path` 拼出 DeepSeek 的实际地址；显式设置路径，避免误用默认的 `/v1/chat/completions`。
-
-`extra-body` 会将 `thinking` 放入请求 JSON 顶层，实际发送的是 `"thinking": {"type": "disabled"}`，不是一个叫 `extra_body` 的嵌套字段。[Spring AI OpenAI 配置](https://docs.spring.io/spring-ai/reference/api/chat/openai-chat.html)
-
-完整配置还关闭了框架层重试，便于统计调用次数；`max-tokens` 只限制单次输出，不能代替整个任务的次数预算。HTTP 默认只监听 `127.0.0.1:8080`，教学日志单独设为 `INFO`，完整值见仓库配置文件。
+[独立打开或下载交互导览（HTML）](first-agent/ask-call-flow.html)。如果阅读器不显示上面的交互区域，下载该文件后用浏览器打开即可，无需启动 Java 服务或调用模型。图中展示的是源码允许的路径，所附代码是生成时的快照；实际请求走过哪些工具，仍以本次返回的 `trace` 为准。
 
 ## 2、看看程序手里有什么资料
 
@@ -171,6 +154,22 @@ spring:
 | `pagination-v2` | 公共分页约定 v2 | `pageNo` 从 1 开始，`pageSize` 最大为 100，未规定默认值 |
 
 这些参数是本篇编的教学资料，不是通用规范。第一份文档只说“去看公共分页约定”，第二份才写了具体数值。第 2 阶段把两份正文直接交给模型；第 3 阶段让模型自己用工具去取。
+
+第 0 节的四阶段预览来自同一个 `initialMessages` 方法。阶段 0 只有用户问题；阶段 1 加入任务规则；阶段 2 把两份正文放进用户消息；阶段 3 的初始消息只有规则和问题，工具定义会另外放进模型选项：
+
+```java
+public static List<Message> initialMessages(String question, int stage) {
+    if (stage == 0) {
+        return List.of(new UserMessage(question));
+    }
+    return List.of(new SystemMessage(SYSTEM), new UserMessage(stage == 2
+            ? "教学资料：\n" + DocTools.demoContext() + "\n问题：" + question : question));
+}
+```
+
+`DemoRunner` 的预览和实际执行都调用它，因此同一阶段的初始消息一致。阶段 0～2 各调用模型一次，不注册工具；阶段 3 才进入后面的工具循环。这里的消息是一次任务的当前上下文，不会自动保留到下一个用户请求。
+
+阶段 2 把全文直接放进消息，没有检索过程；阶段 3 用简单的标题搜索和读取工具按需取得资料，不依赖向量数据库。这两轮的差别在于资料**何时、由谁**放进模型上下文。
 
 程序提供两个动作：`searchDocs` 根据关键词返回文档 ID 和标题，`readDoc` 读取指定正文。至于先查什么、读到引用后是否继续查，由模型根据结果选择。
 
@@ -237,87 +236,59 @@ public String readDoc(
 
 ### 4.2 只看决定下一步的代码
 
-HTTP 请求总是运行第 3 阶段。先看这段代码：`options` 管模型设置和可请求的工具，`initialMessages` 管本轮要给模型看的文字，`Prompt` 再把两者装在一起。每个用户请求都会创建自己的 `DocTools` 和 `trace`。
+`--guided` 的阶段 3 和 HTTP 请求都会走 `DocAgent` 的工具循环。先把关键代码连起来看：`options` 提供模型设置和工具定义，`prompt` 保存本轮消息；模型返回后，Java 决定结束还是执行工具。下面省略了轨迹日志、空响应与超时处理，[完整 DocAgent.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/service/DocAgent.java)保留了这些分支。
 
 ```java
-// 这一组选项只用于当前请求的阶段 3；阶段 0～2 不注册工具。
 var options = OpenAiChatOptions.builder()
-        // 要调用的模型；服务地址和 API Key 在 application.yml / 环境变量中配置。
         .model("deepseek-flash")
-        // 降低回答的随机性，方便比较四个阶段；不保证每次工具路径完全一致。
         .temperature(0.0)
-        // 单次回复最多输出 2048 Token；整个任务的轮数另由 MAX_MODEL_CALLS 限制。
         .maxTokens(2048)
-        // 生成请求体顶层的 "thinking": {"type": "disabled"}，关闭 DeepSeek 思考模式。
         .extraBody(Map.of("thinking", Map.of("type", "disabled")))
-        // 暴露 searchDocs、readDoc 的说明供模型选择；此处尚未执行 Java 方法。
-        // 新建 DocTools，并把工具事件写入本次请求的 trace，避免不同用户的记录混在一起。
         .toolCallbacks(ToolCallbacks.from(new DocTools(event -> addTrace(trace, taskId, event))))
         .build();
-// 阶段 3 的初始消息只有任务规则和用户问题，没有文档正文；工具列表来自 options。
-// Prompt 将“要说什么”和“能请求什么”一起交给下一步的 model.call(prompt)。
 var prompt = new Prompt(initialMessages(question, stage), options);
+int toolCalls = 0;
+
+for (int round = 1; round <= MAX_MODEL_CALLS; round++) {
+    var response = model.call(prompt);
+    var output = response.getResult().getOutput();
+    if (!response.hasToolCalls()) {
+        String answer = output.getText();
+        return answer == null || answer.isBlank()
+                ? stopped("模型返回空答案。", trace)
+                : completed(answer, trace);
+    }
+    var calls = output.getToolCalls();
+    if (round == MAX_MODEL_CALLS || calls.size() > MAX_TOOL_CALLS - toolCalls) {
+        return stopped("剩余调用预算不足，尚未完成。", trace);
+    }
+    if (calls.stream().anyMatch(call -> !ALLOWED_TOOLS.contains(call.name()))) {
+        return stopped("模型请求了未开放的工具。", trace);
+    }
+    toolCalls += calls.size();
+    var result = manager.executeToolCalls(prompt, response);
+    prompt = new Prompt(result.conversationHistory(), options);
+}
+return stopped("模型调用预算耗尽，尚未完成。", trace);
 ```
-
-这里的 `.toolCallbacks(...)` 相当于向模型介绍“有这两个工具可以申请使用”。模型若返回工具请求，Java 才会检查预算和工具名称，再由 `ToolCallingManager` 执行；`Prompt` 本身不会调用工具。`maxTokens(2048)` 只管一次回复长度，不管工具调用次数。
-
-模型返回后，程序要判断：它已经回答，还是想使用工具？下面只保留这个关键分支。[完整 DocAgent.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/service/DocAgent.java)还处理超时、空响应和异常：
-
-```java
-if (!response.hasToolCalls()) {
-    String answer = output.getText();
-    return answer == null || answer.isBlank()
-            ? stopped("模型返回空答案。", trace)
-            : completed(answer, trace);
-}
-var calls = output.getToolCalls();
-// 最后一轮不给工具执行机会：执行后已没有模型轮次读取工具结果。
-// 一次响应的全部工具请求先计入预算，不能只执行其中一部分。
-if (round == MAX_MODEL_CALLS || calls.size() > MAX_TOOL_CALLS - toolCalls) {
-    return stopped("剩余调用预算不足，尚未完成。", trace);
-}
-// 在任何工具执行前检查整批名称，模型请求不等于获得执行权限。
-if (calls.stream().anyMatch(call -> !ALLOWED_TOOLS.contains(call.name()))) {
-    return stopped("模型请求了未开放的工具。", trace);
-}
-toolCalls += calls.size();
-for (var call : calls) {
-    addTrace(trace, taskId, "请求工具：" + call.name() + "，调用 ID：" + call.id());
-}
-// Java 执行允许的工具；Manager 将工具请求、调用 ID 和结果一并写回历史。
-// 下一轮必须用这份历史，模型才能基于刚读到的文档继续决策。
-var result = manager.executeToolCalls(prompt, response);
-prompt = new Prompt(result.conversationHistory(), options);
-```
-
-先看 `if (!response.hasToolCalls())`：没有工具请求，程序就取出文字并结束。有工具请求，程序先检查“次数够不够、工具准不准用”，再让 `ToolCallingManager` 执行。最后一行把本次工具结果装进下一次给模型的消息。
 
 ### 4.3 读懂最关键的几行
 
-`ToolCallbacks.from(...)` 把两个 Java 方法交给 Spring AI，作为模型可请求的工具。每次工具执行都会调用 `addTrace`：事件原文进入本次 HTTP 响应的 `trace`，日志只记录带 `taskId` 的过程信息。上面的 `OpenAiChatOptions` 还指定了 DeepSeek 模型、单次输出上限，并关闭思考模式。
+沿着上面的代码，先抓住五个位置，就能看清模型与 Java 怎样配合完成任务。
 
-```java
-// 本次教学轨迹供接口返回；运行日志只记录工具名、结果状态和长度。
-private static void addTrace(List<String> trace, String taskId, String event) {
-    trace.add(event);
-    if (!log.isInfoEnabled()) return;
-    if (event.startsWith("readDoc 返回：") || event.startsWith("searchDocs 返回：")) {
-        String tool = event.startsWith("readDoc") ? "readDoc" : "searchDocs";
-        String outcome = event.contains("返回：INVALID_ARGUMENT") ? "INVALID_ARGUMENT"
-                : event.contains("返回：NOT_FOUND") ? "NOT_FOUND" : "OK";
-        log.info("Agent 工具返回：taskId={}，tool={}，outcome={}，chars={}",
-                taskId, tool, outcome, event.length());
-        return;
-    }
-    log.info("Agent 轨迹：taskId={}，{}", taskId, event.replace("\r", "\\r").replace("\n", "\\n"));
-}
-```
+1. **注册工具：`ToolCallbacks.from(...)`。** 把 `DocTools` 中的 `searchDocs`、`readDoc` 方法转换成 Spring AI 的工具回调，再通过 `.toolCallbacks(...)` 放进请求选项。模型由此知道工具的用途和参数，可以提出调用请求；注册时并没有执行这些方法。
 
-`application.yml` 为 `example.agent.service` 开启 INFO 日志。`DemoRunner` 不再重复打印整份轨迹；在 IDEA 里运行练习时，你会按发生顺序看到模型调用、工具请求和返回状态。`DocAgent` 日志还记录每次模型调用、工具批次及整次任务的耗时；停止原因用 WARN，执行异常用 ERROR 记录异常类型和堆栈位置。`DocAgent` 不主动记录问题、候选答案、API Key 或工具正文；**教学 `trace` 仍会返回固定公开资料的正文**，接真实业务文档时必须收紧这部分内容。
+2. **请求模型：`var response = model.call(prompt)`。** 把当前消息和请求选项交给模型，取得这一次响应。第一次的消息是任务规则和用户问题；执行过工具后，后续消息还会包含工具请求及结果。这一行位于循环中，所以模型可以根据新资料再次决定下一步。
 
-`model.call(prompt)` 负责把消息发给模型。有些模型响应会同时带文字和工具请求；只要有工具请求，程序就先处理工具，不把那段文字当最终答案。
+3. **判断分支：`if (!response.hasToolCalls())`。** 没有工具请求时，程序取出文字，非空才作为候选答案返回；有工具请求时，继续检查预算和工具名称。有些响应同时包含文字和工具请求，本例会先处理工具，不把附带的文字当成最终答案。
 
-`manager.executeToolCalls(prompt, response)` 才真正调用 Java 方法。`conversationHistory()` 保存了前面的对话、模型这次请求了哪个工具、工具返回了什么。把它交给下一次 `model.call`，模型才知道刚才查到了什么。
+4. **执行工具：`var result = manager.executeToolCalls(prompt, response)`。** 前面的检查通过后，`ToolCallingManager` 根据模型请求的工具名和参数调用对应 Java 方法，取得执行结果。模型负责提出调用，真正读取资料的是 Java 工具代码。
+
+5. **回填历史：`prompt = new Prompt(result.conversationHistory(), options)`。** `conversationHistory()` 包含前面的对话、本次模型的工具请求和对应工具结果。用它更新 `prompt` 后，循环回到下一次 `model.call(prompt)`，模型才能根据刚查到的资料继续判断。
+
+最后两步把反馈接回了模型：**执行工具 → 回填上下文 → 再次调用模型**。例如，`readDoc` 返回的订单文档提到《公共分页约定 v2》，并给出文档 ID `pagination-v2`；这段内容进入下一轮消息，模型才有依据决定继续读取这份约定。仅仅执行 Java 方法或打印结果，并不会自动让模型知道查到了什么。
+
+`addTrace` 是辅助观察代码，用来记录模型轮次、工具请求和返回事件，供控制台排查及接口返回。要区分：**`trace` 是给人看的执行记录，`conversationHistory()` 是给模型继续使用的消息历史**。本例的教学 `trace` 会包含固定公开资料的正文，运行日志只记录过程信息、状态和耗时；接入真实业务文档时，需要收紧返回内容。
 
 `prompt` 和计数器都是本次 `execute` 调用的局部变量，每次任务重新创建。本例不会把上一个问题的历史带入下一个问题，也没有实现跨轮用户会话记忆。
 
@@ -335,7 +306,29 @@ Java 只允许 `searchDocs` 和 `readDoc`，还会检查参数。模型或工具
 
 这套护栏还不能自动判断自然语言答案是否有依据，也不能在程序重启后恢复中途的任务。所以响应写的是“候选答案”，需要对照实际读取的文档核查。接入真实业务资料时，还要按用户身份控制可读范围；若增加写操作，则要处理审批、幂等、事务和回滚。
 
-## 5、让用户通过 HTTP 提问
+## 5、用执行轨迹验证 Agent 循环
+
+先用一次真实 HTTP 请求的记录读懂执行过程；下一节再介绍如何发起 HTTP 请求。用户问“订单查询的分页参数怎么传？”，这次返回的 `trace` 记录了三次模型调用。`1/6` 表示“最多可调用模型 6 次，现在是第 1 次”，不是第 1 个教学阶段。按顺序看：
+
+| 顺序 | 模型这次返回了什么 | Java 做了什么 | 下一次模型调用能看到什么 |
+|---|---|---|---|
+| 第 1 次模型调用 | 提出 **两次** `searchDocs` 请求 | 执行两次搜索，分别返回 `order-api-v2`、`pagination-v2` 的 ID 和标题 | 搜索结果；**还没有文档正文** |
+| 第 2 次模型调用 | 根据搜索结果提出 **两次** `readDoc` 请求 | 读取两份固定教学文档，把正文作为工具结果回填 | 订单接口引用分页约定，以及 `pageNo`、`pageSize` 的具体规则 |
+| 第 3 次模型调用 | 不再请求工具，返回文字答案 | 将文字放入 `answer`，以 `COMPLETED` 结束本次任务 | 本次任务结束 |
+
+这次模型调用了 **3 次**，Java 工具执行了 **4 次**。因为一次模型响应可以提出多个工具请求，两个数字不必相等。
+
+![IDEA 控制台中的 Agent 执行日志，显示三次模型调用及四次工具执行](../../assets/02-first-java-agent/article/agent-ask-log.png)
+
+看到 `请求工具：...`，表示模型**想让 Java 做**这件事。看到 `searchDocs 返回：...` 或 `readDoc 返回：...`，才表示 Java 做完了。`调用 ID` 是配对工具请求和结果用的编号；`order-api-v2` 才是文档 ID。
+
+对照第 4 节的代码：`model.call(prompt)` 得到工具请求，`manager.executeToolCalls(prompt, response)` 执行 Java 方法，`conversationHistory()` 把结果带入下一轮。第 3 次模型不再请求工具，程序取出文字，以 `COMPLETED` 返回候选答案；答案是否正确，仍要看读过的正文。
+
+本例 `DocTools` 查询的是 Java 代码里固定的两份教学文档，没有查询真实订单、数据库或向量库。要核验这次答案，重点看 `readDoc 返回` 是否真的包含“`pageNo` 从 1 开始、`pageSize` 最大为 100、默认值未规定”。模型下次可能先读一份文档再读另一份，也可能一次请求多个工具；程序没有写死固定路径。
+
+响应里的 `trace` 没记录搜索关键词，单凭截图不能反推出模型传了什么关键词。
+
+## 6、把实验接成 HTTP 接口
 
 练习时，你在 IDEA 控制台输入问题。做成接口后，用户在 HTTP 请求里输入问题。接口不会替用户预设问题，也不让用户指定教学阶段。
 
@@ -352,7 +345,7 @@ Content-Type: application/json
 用户提交 question → Controller 接收 → DocAgent 处理 → 返回 answer 和 trace
 ```
 
-### 5.1 定义入参和出参
+### 6.1 定义入参和出参
 
 你只需提交 `question`。代码用几个名字不同的对象传递它：`AskQuery` 接收并检查 HTTP 请求；`AskDTO` 把问题交给 Agent；`AgentResultDTO` 装处理结果；`AskVO` 把结果交还给用户。它们是程序不同位置使用的数据外壳，不是要你填写四次。空问题或超过 1000 字的问题会返回 HTTP 400。[Spring MVC 请求体验证](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-methods/requestbody.html)
 
@@ -365,7 +358,7 @@ Content-Type: application/json
 
 这些对象的[完整声明与注释](https://github.com/tyronczt/hello-ai/tree/main/agent/zero-to-one/first-agent/src/main/java/example/agent)在仓库中。`COMPLETED` 不代表答案事实已自动核验；真实业务资料也不应直接把全文放进 `trace` 返回。
 
-### 5.2 Controller 只做边界转换
+### 6.2 Controller 只做边界转换
 
 `POST /api/agent/ask` 只接受 `question`。下面是 [AgentController.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/web/AgentController.java) 的入口方法：
 
@@ -381,34 +374,19 @@ public AskVO ask(@Valid @RequestBody AskQuery query) {
 
 这段方法只做两件事：接收用户问题，把 Agent 的结果交还给用户。查资料和决定何时停止，都在 `DocAgent` 里。这个示例没有登录和权限控制；以后接入真实文档时，搜索和读取都要按已认证的用户身份检查权限。
 
-### 5.3 启动入口与教学流程分开
+### 6.3 启动入口与教学流程分开
 
-[AgentApplication.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/AgentApplication.java)看 IDEA 里填了什么启动参数，再决定启动哪种模式：
+[AgentApplication.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/AgentApplication.java)根据启动参数选择入口：留空时启动 HTTP 服务；`--guided` 进入第 0 节的四阶段练习；`--stage=2 "你的问题"` 直接运行指定阶段。教学模式会设置 `WebApplicationType.NONE`，让 Spring 运行 [DemoRunner.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/demo/DemoRunner.java)，但不启动 HTTP 服务。
 
-| Program arguments | 启动后做什么 |
-|---|---|
-| 留空 | 启动 HTTP 服务，等用户 POST 问题 |
-| `--guided` | 打开四阶段练习，让你输入问题、预测、运行或跳过 |
-| `--stage=2 "你的问题"` | 直接运行第 2 阶段，不经过预测和跳过 |
+`DemoRunner` 只负责展示、预测和选择，实际调用路径是 `DemoRunner.show() → DocAgent.runStage() → model.call()`；HTTP 请求则经过 `AgentController.ask() → DocAgent.process()`，固定运行阶段 3。HTTP 调用的详细路径可以回看第 1.3 节的交互导览。
 
-[DemoRunner.java](https://github.com/tyronczt/hello-ai/blob/main/agent/zero-to-one/first-agent/src/main/java/example/agent/demo/DemoRunner.java)像练习的主持人：显示本轮会给模型什么，问你猜测和选择，然后打印结果。它自己不回答问题，也不提供模拟答案。选 `s` 时，它继续展示下一阶段，不调用模型；按回车时，它交给 `DocAgent`，由后者调用 DeepSeek。代码里这条路径是 `DemoRunner.show() → DocAgent.runStage() → model.call()`。
+### 6.4 在 IDEA 启动 HTTP 服务
 
-`DemoRunner` 实现了 `ApplicationRunner`，所以 Spring 启动后会调用它的 `run()`。教学模式里的 `WebApplicationType.NONE` 只表示不启动 HTTP 服务器；Spring 和 `DemoRunner` 仍会运行。只看预览可以暂时不填 API Key，但项目仍要保留 Spring AI 配置；真正按回车执行需要有效 Key。
-
-主类放根包、其他类放子包，是为了让 Spring 能找到它们，符合 [Spring Boot 官方包结构建议](https://docs.spring.io/spring-boot/reference/using/structuring-your-code.html)。完整目录和实现见仓库链接。
-
-### 5.4 在 IDEA 启动 HTTP 服务
-
-在 IDEA 中这样启动：
-
-1. 打开 `first-agent/pom.xml`，选 JDK 21。
-2. 创建主类为 `example.agent.AgentApplication` 的运行配置。
-3. 在 **Environment variables（环境变量）** 中设置 `DEEPSEEK_API_KEY`。
-4. **Program arguments（程序实参）留空**，点击运行。服务会等待 HTTP 请求。
+沿用第 0 节的 `example.agent.AgentApplication` 运行配置：按第 1.2 节设置 `DEEPSEEK_API_KEY`，把 **Program arguments（程序实参）清空**，再点击运行。服务启动后会等待 HTTP 请求，不会自动发送订单问题。
 
 不要勾选 **Store as project file / Share through VCS**，运行配置可能明文保存密钥。在 IDEA Terminal 中设置环境变量，也不会自动传给工具栏的 Run 配置。[JetBrains 环境变量说明](https://www.jetbrains.com/help/idea/program-arguments-and-environment-variables.html)
 
-启动只建立服务，不发送订单问题。保持 IDEA 中的服务运行，在 PowerShell 中发起请求：
+保持 IDEA 中的服务运行，在 PowerShell 中发起请求：
 
 ```powershell
 $body = @{ question = '订单查询的分页参数怎么传？请给出文档依据。' } | ConvertTo-Json -Compress
@@ -425,31 +403,9 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 }
 ```
 
-参数不合法返回 HTTP 400。模型或工具中途停止时，HTTP 请求已被服务处理，返回 HTTP 200 与 `status: STOPPED`，调用方要检查 `status`，不能把 `answer` 中的停止原因当成问题答案。
+![发送订单分页问题后的 HTTP 请求与响应，包含候选答案和执行轨迹](../../assets/02-first-java-agent/article/agent-ask-post.png)
 
-### 5.5 多用户时状态放在哪里
-
-`DocAgent` 是单例处理器，但每次 `process()` 都新建消息历史、工具实例、轮次计数与轨迹列表；共享的教学文档集合不可变。并发请求不会把甲的工具结果带进乙的下一轮。当前服务没有跨请求会话记忆，连续两次 POST 也是两个独立任务。
-
-本例默认只监听本机，也没有登录、限流和用量配额。要给多设备、多用户使用，应先接入可信的鉴权入口，再开放监听地址；真实资料还要按身份过滤搜索和读取结果。`AGENT_PORT` 可以更改本机端口，`AGENT_BIND_ADDRESS` 可配置监听地址，但配置它不等于获得了鉴权能力。
-
-## 6、怎样从输出判断它在做什么
-
-以一次实际请求为例：你问“订单查询的分页参数怎么传？”，返回的 `trace` 记录了三次模型调用。`1/6` 表示“最多可调用模型 6 次，现在是第 1 次”，不是第 1 个教学阶段。按顺序看：
-
-| 顺序 | 模型这次返回了什么 | Java 做了什么 | 下一次模型调用能看到什么 |
-|---|---|---|---|
-| 第 1 次模型调用 | 提出 **两次** `searchDocs` 请求 | 执行两次搜索，分别返回 `order-api-v2`、`pagination-v2` 的 ID 和标题 | 搜索结果；**还没有文档正文** |
-| 第 2 次模型调用 | 根据搜索结果提出 **两次** `readDoc` 请求 | 读取两份固定教学文档，把正文作为工具结果回填 | 订单接口引用分页约定，以及 `pageNo`、`pageSize` 的具体规则 |
-| 第 3 次模型调用 | 不再请求工具，返回文字答案 | 将文字放入 `answer`，以 `COMPLETED` 结束本次任务 | 本次任务结束 |
-
-这次模型调用了 **3 次**，Java 工具执行了 **4 次**。因为一次模型响应可以提出多个工具请求，两个数字不必相等。
-
-看到 `请求工具：...`，表示模型**想让 Java 做**这件事。看到 `searchDocs 返回：...` 或 `readDoc 返回：...`，才表示 Java 做完了。`调用 ID` 是配对工具请求和结果用的编号；`order-api-v2` 才是文档 ID。
-
-在代码里，`model.call(prompt)` 把消息发给模型，`manager.executeToolCalls(prompt, response)` 执行模型请求的 Java 方法，并把结果放进下一次请求。第 3 次模型没有再请求工具，于是程序取出文字，返回 JSON。HTTP `200` 表示接口正常返回，`COMPLETED` 表示得到了候选答案；答案是否正确，仍要看读过的正文。
-
-本例 `DocTools` 查询的是 Java 代码里固定的两份教学文档，没有查询真实订单、数据库或向量库。要核验这次答案，重点看 `readDoc 返回` 是否真的包含“`pageNo` 从 1 开始、`pageSize` 最大为 100、默认值未规定”。模型下次可能先读一份文档再读另一份，也可能一次请求多个工具；程序没有写死固定路径。
+参数不合法返回 HTTP 400。正常处理的请求返回 HTTP 200；模型或工具中途停止时，响应里的 `status` 为 `STOPPED`，`answer` 是停止原因，不是问题答案。`COMPLETED` 也只表示得到了候选答案，仍需用第 5 节的方法核对资料依据。
 
 想在 IDEA 中亲眼看一遍，用 **Debug** 启动 HTTP 服务，发送同一个 POST，然后依次停在：
 
@@ -457,17 +413,26 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 2. `DocAgent` 中的 `model.call(prompt)`：看模型这轮是否请求工具；再停在 `manager.executeToolCalls(...)`，看 Java 何时执行。
 3. `DocTools.searchDocs()` / `readDoc()`：看实际传入的参数和返回值。工具执行后，看 `result.conversationHistory()` 如何成为下一次调用的 `prompt`。
 
-响应里的 `trace` 没记录搜索关键词，单凭截图不能反推出模型传了什么关键词。
+### 6.5 多用户时状态放在哪里
 
-要进一步观察反馈的作用，可以把订单文档正文改成完整的分页说明，再在 IDEA 中重新运行。模型可能直接结束；也可以保留引用但删掉公共约定，观察它能否说明资料缺失。
+`DocAgent` 是单例处理器，但每次 `process()` 都新建消息历史、工具实例、轮次计数与轨迹列表；共享的教学文档集合不可变。并发请求不会把甲的工具结果带进乙的下一轮。当前服务没有跨请求会话记忆，连续两次 POST 也是两个独立任务。
+
+本例默认只监听本机，也没有登录、限流和用量配额。要给多设备、多用户使用，应先接入可信的鉴权入口，再开放监听地址；真实资料还要按身份过滤搜索和读取结果。`AGENT_PORT` 可以更改本机端口，`AGENT_BIND_ADDRESS` 可配置监听地址，但配置它不等于获得了鉴权能力。
 
 ## 7、跑通以后，再做几项检查
+
+先用三个问题验收主要结果；每次都检查实际读到的文档和答案依据，不能只看返回的数字。
 
 | 检查 | 怎么操作 | 看什么 |
 |---|---|---|
 | 跨文档查询 | POST 提交“订单查询的分页参数怎么传？请给出文档依据。” | 是否读取相关正文，参数及来源是否正确 |
 | 资料没写的值 | 询问 `pageSize` 默认值 | 应说明文档未规定，不能补出 10 或 20 |
 | 超出资料范围 | 询问退款到账时间 | 应说明没有相应依据 |
+
+再检查失败和停止条件：
+
+| 检查 | 怎么操作 | 看什么 |
+|---|---|---|
 | 文档缺失 | 临时移除公共约定，在 IDEA 中重新运行并提问 | 应报告缺失，不能假装读过 |
 | 调用次数限制 | 临时将 `MAX_MODEL_CALLS` 改为 1 | 若模型请求工具，应在执行前停止 |
 | 服务不可用 | 临时将 `DEEPSEEK_BASE_URL` 指向本机未监听的端口 | 应返回失败提示，不输出虚假的成功答案 |
@@ -475,6 +440,8 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 测试完成后恢复教学数据、调用预算及服务地址。重复运行会产生新的线上用量，用少量固定问题检查是否有漏查或错误引用即可。
 
 工具是否执行、次数限制是否生效，可以通过确定性测试验证；模型是否总能选择合适路径，需要真实模型上的重复评测。两类检查解决的问题不同。
+
+要进一步观察反馈的作用，可以把订单文档正文改成完整的分页说明，再在 IDEA 中重新运行。模型可能直接结束；也可以保留引用但删掉公共约定，观察它能否说明资料缺失。
 
 ### 7.1 想看得更明白，再做三组对照
 
@@ -510,6 +477,8 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 这个例子只处理固定教学文档，异常时通过 `status: STOPPED` 返回停止原因。HTTP 已提供结构化任务结果，但没有持久化恢复、自动核验引用、多用户鉴权或业务写操作。
 
+每次请求都重新开始，没有跨请求的会话记忆；两个工具是本地 Java 方法，没有使用 MCP；任务规则写在提示词中，没有做成 Skill。这些能力解决的是不同问题，应在需要时分别引入。
+
 后续可以按需求扩展：资料量变大时改进检索，多轮提问时引入会话记忆，对外提供服务时补充可信身份和任务管理。加入写操作前，还要落实业务状态校验、幂等与授权。
 
 本篇先完成一件事：让模型能够选择 Java 工具，执行结果能够返回模型，并让这个过程有记录、能停止。
@@ -532,6 +501,8 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 ## 9、参考资料与验证范围
 
+截至 2026-09-23，Spring 官方把 Spring AI 2.0.1 列为最新稳定版；它面向 Spring Boot 4.0/4.1，本例使用已发布的 Boot 4.1.1。版本号是本篇可复现组合，不是要求你在自己的业务项目里立刻升级。[Spring AI 稳定版本](https://docs.spring.io/spring-ai/reference/spring-projects.html) · [2.0 升级说明](https://docs.spring.io/spring-ai/reference/upgrade-notes.html) · [Spring Boot 4.1.1 运行要求](https://docs.spring.io/spring-boot/system-requirements.html)
+
 四阶段对照借鉴了[《深入理解 AI Agent》第一章](https://bojieli.github.io/ai-agent-book/book/chapter1/)的实验思路，也参考了[Javaer 转 Agent 学习资料篇](https://tyron.me/posts/agent-resources)的选材方式。订单文档和 Java 程序是本篇重新设计的教学案例，下面的示意输出不代表原书的实验结果。
 
 - [DeepSeek 首次调用 API](https://api-docs.deepseek.com/zh-cn/)：线上地址、模型名与认证方式。
@@ -545,4 +516,4 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 
 此前已在 JDK 21、Maven 3.9.11 下完成编译和打包。本机模拟 DeepSeek 接口检查了请求地址、认证头、模型名、思考模式开关和输出上限，也检查了跨文档结果回填、未开放工具、重复调用、文档缺失、工具超额、非法参数和空回答。HTTP 层检查了空问题返回 400、POST 返回答案和轨迹，以及三个并发问题不会串到一起；第 0～2 阶段的请求内容也用本机模拟服务核对过。
 
-上面是**本机模拟验证**。此外，读者提供的一次真实 DeepSeek HTTP 调用返回了 `COMPLETED`，轨迹中有 3 次模型调用和 4 次工具执行，第 6 节据此讲解。这只说明该次请求跑通；模型换个问题或重跑一次，选工具的路径可能不同。Ollama 路径尚未验证。
+上面是**本机模拟验证**。此外，读者提供的一次真实 DeepSeek HTTP 调用返回了 `COMPLETED`，轨迹中有 3 次模型调用和 4 次工具执行，第 5 节据此讲解。这只说明该次请求跑通；模型换个问题或重跑一次，选工具的路径可能不同。Ollama 路径尚未验证。
