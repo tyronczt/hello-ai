@@ -1,5 +1,7 @@
 # Javaer转Agent：用 Java 做第一个 Agent
 
+![四阶段实验总览：从只有问题、加入回答规则、直接给资料，到按需调用工具](../../assets/02-first-java-agent/article/first-java-agent-whiteboard.png)
+
 上一篇[《什么是 Agent》](01-what-is-agent.md)讲了一个资料助手。这次我们用 Java 做出它：你问“订单查询的分页参数怎么传”，它去找文档、读正文，再根据读到的内容回答。文档只有两份，方便你看清每一步。
 
 这次实验要看清三件事：**回答规则不能代替资料；资料可以直接放进上下文，也可以由工具按需取回；工具结果必须交回模型，它才能决定下一步。** 全文沿用同一个分页问题。先用 `--guided` 比较四个阶段，再看资料、工具和循环怎样写成代码，最后把它接成 HTTP 接口。
@@ -134,11 +136,9 @@ first-agent/
 | HTTP 接口 | `spring-boot-starter-webmvc` |
 | 请求校验 | `spring-boot-starter-validation` |
 
-导览展示 **HTTP 入口**：`AgentController.ask() → DocAgent.process() → run() → execute()`；第 0 节的 `--guided` 则由 `DemoRunner` 调用 `DocAgent.runStage()`。两条路径都进入 `DocAgent`，但只有 HTTP 入口固定执行第 3 阶段。你可以在下图切换「调用流程」和「交互时序」，点击节点查看源码，再用「直接回答」「工具循环」「停止条件」聚焦分支。
+导览展示 **HTTP 入口**：`AgentController.ask() → DocAgent.process() → run() → execute()`；第 0 节的 `--guided` 则由 `DemoRunner` 调用 `DocAgent.runStage()`。两条路径都进入 `DocAgent`，但只有 HTTP 入口固定执行第 3 阶段。
 
-<iframe src="first-agent/ask-call-flow.html" title="AgentController.ask 调用流程与交互时序导览" width="100%" height="960" loading="lazy" style="border: 0;"></iframe>
-
-[独立打开或下载交互导览（HTML）](first-agent/ask-call-flow.html)。如果阅读器不显示上面的交互区域，下载该文件后用浏览器打开即可，无需启动 Java 服务或调用模型。图中展示的是源码允许的路径，所附代码是生成时的快照；实际请求走过哪些工具，仍以本次返回的 `trace` 为准。
+在网站阅读时，切换到页首的「交互导览」标签；也可以[在新页面打开交互导览](https://tyron.me/posts/first-agent/ask-call-flow.html)。导览中可以切换「调用流程」和「交互时序」，点击节点查看源码，再用「直接回答」「工具循环」「停止条件」聚焦分支。无需启动 Java 服务或调用模型。图中展示的是源码允许的路径，所附代码是生成时的快照；实际请求走过哪些工具，仍以本次返回的 `trace` 为准。
 
 ## 2、看看程序手里有什么资料
 
