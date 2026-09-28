@@ -12,6 +12,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
  * 每次 Agent 请求都会创建新实例并注入该请求的轨迹接收器。
  */
 public class DocTools {
+    /** 本轮轨迹接收器，记录工具命中、输入错误及固定公开教学正文。 */
     private final Consumer<String> trace;
 
     /** 固定公开的两份教学资料；所有调用方看到同一集合，不具备真实业务资料的权限隔离。 */
@@ -22,7 +23,11 @@ public class DocTools {
                     "pageNo 从 1 开始；pageSize 最大为 100。本文未规定 pageSize 的默认值。")
     );
 
-    /** 轨迹由调用方持有，工具不把本次读取结果写入跨请求共享状态。 */
+    /**
+     * 绑定本轮轨迹接收器，不在构造时读取文档或写入跨请求共享状态。
+     *
+     * @param trace 本轮非 null 的轨迹接收器，工具执行时同步调用
+     */
     public DocTools(Consumer<String> trace) {
         this.trace = trace;
     }
@@ -30,6 +35,9 @@ public class DocTools {
     /**
      * 仅按标题包含关系搜索，不做分词或语义检索。
      * 返回 ID 和标题，不返回正文；模型还需调用 readDoc 才能获得回答依据。
+     *
+     * @param keyword 原始关键词，非空白且长度不超过 40；匹配前去除首尾空白并忽略大小写
+     * @return 每行一个命中项；非法输入返回 INVALID_ARGUMENT，无命中返回 NOT_FOUND
      */
     @Tool(description = "按一个简短关键词搜索教学文档，返回文档 ID 和标题，不返回正文。")
     public String searchDocs(
@@ -56,6 +64,9 @@ public class DocTools {
     /**
      * 只接受固定集合中的精确文档 ID；不会将 ID 当成本地路径或 URL。
      * 格式错误和文档不存在都作为明确结果回给模型，便于它修正或停止。
+     *
+     * @param docId 1～64 位小写字母、数字或连字符组成的精确文档 ID，不去除首尾空白
+     * @return 来源 ID、标题与正文；非法输入返回 INVALID_ARGUMENT，不存在时返回 NOT_FOUND
      */
     @Tool(description = "根据搜索结果或正文引用中的文档 ID 读取教学文档。")
     public String readDoc(
@@ -79,6 +90,12 @@ public class DocTools {
         return result;
     }
 
-    /** 文档标识、标题与正文，均为固定的教学内容。 */
+    /**
+     * 固定公开教学文档的内容容器，不代表来自外部文件或真实业务资料。
+     *
+     * @param id 固定集合中的文档 ID，供 readDoc 精确匹配
+     * @param title 供 searchDocs 按关键词匹配的标题
+     * @param content 固定教学正文，读取时原样返回且写入本轮教学轨迹
+     */
     private record Doc(String id, String title, String content) {}
 }
