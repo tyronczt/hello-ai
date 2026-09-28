@@ -8,7 +8,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /** HTTP 服务入口；教学参数仅决定是否以非 Web 模式启动。 */
 @SpringBootApplication
 public class AgentApplication {
-    /** 无教学参数时启动 HTTP 服务；传入 --guided 或 --stage 时只运行本地教学流程。 */
+    /**
+     * 无教学参数时启动 HTTP 服务；传入 --guided、--stage 或 --stage=值时关闭 Web 启动。
+     * 教学模式仍创建 Spring 容器并运行 DemoRunner，模型调用由具体教学选择触发。
+     *
+     * @param args 原始启动参数，继续传给 SpringApplication 与 DemoRunner
+     */
     public static void main(String[] args) {
         var app = new SpringApplication(AgentApplication.class);
         if (Arrays.stream(args).anyMatch(arg -> arg.equals("--guided")

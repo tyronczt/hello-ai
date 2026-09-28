@@ -14,14 +14,26 @@ import org.springframework.stereotype.Component;
 /** 命令行教学流程；仅在显式传入 --guided 或 --stage 时运行，不参与 HTTP 请求。 */
 @Component
 public class DemoRunner implements ApplicationRunner {
+    /** 教学控制台输出；引导模式会展示用户输入及固定公开文档。 */
     private static final Logger log = LoggerFactory.getLogger(DemoRunner.class);
+    /** 实际执行教学阶段的应用服务，所有模型调用经此服务完成。 */
     private final DocAgent agent;
 
+    /**
+     * 注入阶段执行服务，不在构造时发起模型调用。
+     *
+     * @param agent Spring 注入的文档 Agent
+     */
     public DemoRunner(DocAgent agent) {
         this.agent = agent;
     }
 
-    /** 按启动参数选择四阶段交互练习或单阶段复查；HTTP 模式下不触发模型请求。 */
+    /**
+     * 按启动参数选择教学流程；--guided 优先于 --stage，二者均缺省时直接返回。
+     * 单阶段模式从非选项参数拼接问题，非法阶段文本或缺少问题时只显示提示。
+     *
+     * @param args Spring 提供的启动参数，包含教学选项及本次问题
+     */
     @Override
     public void run(ApplicationArguments args) {
         if (args.containsOption("guided")) {
@@ -49,7 +61,7 @@ public class DemoRunner implements ApplicationRunner {
 
     /** 同一个用户问题依次对照四个阶段；每轮先预测，再由用户决定是否调用线上模型。 */
     private void guided() {
-        // 同一个问题跑四轮，读者才能把答案变化归因于规则、资料和工具。
+        // 固定同一个问题，对照规则、资料和工具的变化；模型回复仍可能有随机差异。
         var input = new Scanner(System.in);
         log.info("四轮对照练习：每轮先预测，再决定是否调用线上模型。每次调用都会产生用量。");
         String chosen = read(input, "请输入你的问题，例如：订单查询的分页参数怎么传？\n> ");
@@ -98,7 +110,12 @@ public class DemoRunner implements ApplicationRunner {
         log.info("练习结束。请用实际读取的文档核对最终答案。不同模型运行路径可能不同。");
     }
 
-    /** 运行指定阶段并展示最终结果；执行轨迹由 DocAgent 实时写入日志。 */
+    /**
+     * 运行指定阶段并展示候选答案或停止原因，不重复输出 DocAgent 已记录的轨迹。
+     *
+     * @param request 本次问题的内部 DTO
+     * @param stage 要运行的教学阶段，非法值由 DocAgent 转换为 STOPPED
+     */
     private void show(AskDTO request, int stage) {
         AgentResultDTO result = agent.runStage(request, stage);
         // DocAgent 已在事件发生时输出轨迹；这里仅展示最终答案，避免同一条轨迹打印两次。
@@ -109,6 +126,13 @@ public class DemoRunner implements ApplicationRunner {
         }
     }
 
+    /**
+     * 展示控制台提示并读取一行原始输入；输入流结束时返回 null，由上层退出练习。
+     *
+     * @param input 本次练习的终端输入读取器
+     * @param prompt 读取前展示的提示文本
+     * @return 原始输入行；输入流已结束时为 null，空行保留为空字符串
+     */
     private static String read(Scanner input, String prompt) {
         log.info("{}", prompt);
         // IDEA 运行窗口或管道关闭输入时安全退出；不在 Agent 中处理终端交互。

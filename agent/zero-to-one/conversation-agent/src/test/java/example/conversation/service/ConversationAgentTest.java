@@ -22,28 +22,66 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** 模型只返回脚本响应；真正执行 ChatClient、Advisor、工具和记忆组件，不连接外网。 */
 class ConversationAgentTest {
+    /**
+     * 构造不请求工具的脚本模型回复，不调用真实模型服务。
+     *
+     * @param text 预设回复文本，可传空字符串以验证空答案停止分支
+     * @return 包含一条助手回复的模型响应
+     */
     static ChatResponse answer(String text) {
         return new ChatResponse(List.of(new Generation(new AssistantMessage(text))));
     }
+    /**
+     * 构造同一响应中的工具请求批次，供名称与预算预检场景使用。
+     *
+     * @param name 每个请求使用的工具名称，可为未注册名称以验证拒绝分支
+     * @param arguments 每个工具请求携带的 JSON 参数文本
+     * @param count 批次请求数量，调用 ID 按零起始序号生成
+     * @return 含工具请求且没有正文的脚本响应
+     */
     static ChatResponse calls(String name, String arguments, int count) {
         var calls = IntStream.range(0, count).mapToObj(i ->
                 new AssistantMessage.ToolCall("call-" + i, "function", name, arguments)).toList();
         return new ChatResponse(List.of(new Generation(
                 AssistantMessage.builder().content("").toolCalls(calls).build())));
     }
+    /**
+     * 创建脚本模型替身，保留 OpenAI 选项类型以实际运行框架工具循环。
+     *
+     * @param fn 根据实际 Prompt 返回预设响应或抛出模拟异常的脚本
+     * @return 不联网的 ChatModel，仅将每次调用交给脚本
+     */
     static ChatModel model(Function<Prompt, ChatResponse> fn) {
         return new ChatModel() {
+            /**
+             * 将框架的实际请求交给脚本函数。
+             *
+             * @param prompt 框架生成的消息与工具选项
+             * @return 脚本预设的模型响应
+             */
             @Override public ChatResponse call(Prompt prompt) { return fn.apply(prompt); }
-            // 与生产 OpenAiChatModel 相同的选项类型，确保工具回调能进入框架循环。
+            /**
+             * 提供工具循环所需的 OpenAI 兼容默认选项类型。
+             *
+             * @return 新建的 OpenAiChatOptions，不包含真实密钥或网络调用
+             */
             @Override public org.springframework.ai.chat.prompt.ChatOptions getOptions() {
                 return org.springframework.ai.openai.OpenAiChatOptions.builder().build();
             }
         };
     }
+    /**
+     * 检查任一非 null 消息正文是否包含指定标记，不把工具消息类型当作正文依据。
+     *
+     * @param messages 当前请求消息或会话历史
+     * @param text 要查找的标记文本
+     * @return 任一消息正文包含标记时为 true
+     */
     static boolean hasText(List<Message> messages, String text) {
         return messages.stream().anyMatch(m -> m.getText() != null && m.getText().contains(text));
     }
 
+    /** 验证框架实际执行工具并回填结果，而会话只保留外层用户与最终助手消息。 */
     @Test void frameworkRunsToolsAndMemoryStoresOnlyOuterExchange() {
         List<Prompt> prompts = new ArrayList<>();
         var agent = new ConversationAgent(model(p -> {
@@ -62,6 +100,7 @@ class ConversationAgentTest {
                 .map(AssistantMessage.class::cast).noneMatch(AssistantMessage::hasToolCalls));
     }
 
+    /** 验证同会话追问能看到标记，其他会话及无状态入口不会继承该标记。 */
     @Test void followupSeesOwnHistoryButOtherSessionAndStatelessDoNot() {
         List<Prompt> prompts = new ArrayList<>();
         var agent = new ConversationAgent(model(p -> { prompts.add(p); return answer("已收到。"); }));
@@ -74,6 +113,7 @@ class ConversationAgentTest {
         assertFalse(hasText(prompts.get(3).getInstructions(), "ALPHA_42"));
     }
 
+    /** 验证澄清追问作为已完成的一轮保留，用户补充与追问一起进入后续请求。 */
     @Test void clarificationIsAnOrdinaryCompletedTurnAndSupplementIsKept() {
         var count = new AtomicInteger();
         var agent = new ConversationAgent(model(p -> {
@@ -89,6 +129,7 @@ class ConversationAgentTest {
         assertTrue(hasText(agent.history("a"), "我使用 v2"));
     }
 
+    /** 验证模拟模型异常不泄漏异常消息，失败恢复原历史，随后清空移除历史。 */
     @Test void failureRestoresHistoryAndClearRemovesIt() {
         var count = new AtomicInteger();
         var agent = new ConversationAgent(model(p -> {
@@ -105,6 +146,7 @@ class ConversationAgentTest {
         assertTrue(agent.history("a").isEmpty());
     }
 
+    /** 验证新建服务实例不会继承另一个实例的进程内历史，不验证持久化能力。 */
     @Test void newServiceHasNoPersistedHistory() {
         var original = new ConversationAgent(model(p -> answer("记下了")));
         original.ask("a", "上一进程的信息");
@@ -112,6 +154,7 @@ class ConversationAgentTest {
         assertTrue(restarted.history("a").isEmpty());
     }
 
+    /** 验证同批 9 个工具请求在执行前被整批拒绝，失败轮没有留下历史。 */
     @Test void toolBatchOverBudgetExecutesNothing() {
         var agent = new ConversationAgent(model(p -> calls("readDoc", "{\"docId\":\"pagination-v2\"}", 9)));
         var result = agent.ask("a", "读取");
@@ -120,6 +163,7 @@ class ConversationAgentTest {
         assertTrue(agent.history("a").isEmpty());
     }
 
+    /** 验证未开放工具名在工具执行前被拒绝，并返回明确停止原因。 */
     @Test void unregisteredToolIsRejectedBeforeExecution() {
         var agent = new ConversationAgent(model(p -> calls("deleteFile", "{}", 1)));
         var result = agent.ask("a", "读取");
@@ -127,6 +171,7 @@ class ConversationAgentTest {
         assertTrue(result.answer().contains("未开放"));
     }
 
+    /** 验证持续请求工具时最多调用模型 6 次，最后一轮不执行无法回填的第 6 次工具请求。 */
     @Test void repeatedToolRequestsStopAtSixModelCallsAndFiveExecutions() {
         var count = new AtomicInteger();
         var agent = new ConversationAgent(model(p -> {
@@ -139,6 +184,7 @@ class ConversationAgentTest {
         assertEquals(5, result.trace().stream().filter(s -> s.startsWith("readDoc 返回：")).count());
     }
 
+    /** 验证不存在文档的 NOT_FOUND 结果回填给模型，模型仍可据此结束本轮。 */
     @Test void missingDocumentIsFedBackToModel() {
         var count = new AtomicInteger();
         var agent = new ConversationAgent(model(p -> {
@@ -151,6 +197,7 @@ class ConversationAgentTest {
         assertEquals("COMPLETED", agent.ask("a", "读取不存在的文档").status());
     }
 
+    /** 验证空回复与注入时钟达到五分钟均停止本轮，并恢复为空的原会话历史。 */
     @Test void emptyAnswerAndExpiredBudgetAreStopped() {
         var empty = new ConversationAgent(model(p -> answer("")));
         assertEquals("STOPPED", empty.ask("a", "问题").status());
@@ -163,6 +210,11 @@ class ConversationAgentTest {
         assertTrue(expired.history("a").isEmpty());
     }
 
+    /**
+     * 阻塞一轮脚本模型调用，验证同会话提问与清空被拒绝，另一会话仍可完成。
+     *
+     * @throws Exception 测试线程等待、并发任务获取结果或模拟调用发生异常时传播
+     */
     @Test void sameSessionConcurrentAskAndClearAreRejected() throws Exception {
         var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
@@ -186,6 +238,7 @@ class ConversationAgentTest {
         }
     }
 
+    /** 验证会话 ID 与问题输入约束，并确认登记第 33 个会话时停止而非调用模型。 */
     @Test void validatesInputsAndBoundsSessionCount() {
         var agent = new ConversationAgent(model(p -> answer("完成")));
         assertThrows(IllegalArgumentException.class, () -> agent.ask("", "问题"));
