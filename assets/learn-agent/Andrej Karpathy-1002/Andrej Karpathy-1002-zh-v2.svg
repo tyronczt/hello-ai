@@ -1,0 +1,456 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="1600" viewBox="0 0 3200 1600"><title>简化技术英语（ASD-STE100）概览：中文译制版</title><desc>根据 Karpathy 原帖附图译制，英文词条与例句保留。词数指英文词数；本图不替代官方标准。</desc><rect x="0" y="0" width="3200" height="1600" fill="white" stroke="none" stroke-width="0"/>
+<rect x="16" y="16" width="3168" height="1568" fill="white" stroke="#17283b" stroke-width="1.6"/>
+<rect x="38" y="38" width="3124" height="1524" fill="white" stroke="#536477" stroke-width="1.1"/>
+<text xml:space="preserve" x="233.25" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">1</text>
+<text xml:space="preserve" x="233.25" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">1</text>
+<path d="M428.5 16 L428.5 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M428.5 1562 L428.5 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="623.75" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">2</text>
+<text xml:space="preserve" x="623.75" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">2</text>
+<path d="M819 16 L819 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M819 1562 L819 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="1014.25" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">3</text>
+<text xml:space="preserve" x="1014.25" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">3</text>
+<path d="M1209.5 16 L1209.5 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M1209.5 1562 L1209.5 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="1404.75" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">4</text>
+<text xml:space="preserve" x="1404.75" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">4</text>
+<path d="M1600 16 L1600 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M1600 1562 L1600 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="1795.25" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<text xml:space="preserve" x="1795.25" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<path d="M1990.5 16 L1990.5 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M1990.5 1562 L1990.5 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="2185.75" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">6</text>
+<text xml:space="preserve" x="2185.75" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">6</text>
+<path d="M2381 16 L2381 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M2381 1562 L2381 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="2576.25" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">7</text>
+<text xml:space="preserve" x="2576.25" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">7</text>
+<path d="M2771.5 16 L2771.5 38" fill="none" stroke="#536477" stroke-width="1.3"/>
+<path d="M2771.5 1562 L2771.5 1584" fill="none" stroke="#536477" stroke-width="1.3"/>
+<text xml:space="preserve" x="2966.75" y="32" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">8</text>
+<text xml:space="preserve" x="2966.75" y="1581" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">8</text>
+<text xml:space="preserve" x="27" y="250" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">A</text>
+<text xml:space="preserve" x="3172" y="250" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">A</text>
+<text xml:space="preserve" x="27" y="645" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">B</text>
+<text xml:space="preserve" x="3172" y="645" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">B</text>
+<text xml:space="preserve" x="27" y="1040" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">C</text>
+<text xml:space="preserve" x="3172" y="1040" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">C</text>
+<text xml:space="preserve" x="27" y="1435" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">D</text>
+<text xml:space="preserve" x="3172" y="1435" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="16" font-weight="400" fill="#536477" text-anchor="middle">D</text>
+<rect x="64" y="64" width="980" height="680" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="64" y="64" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="88" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">A</text>
+<text xml:space="preserve" x="130" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">文档结构</text>
+<text xml:space="preserve" x="1026" y="98" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="end">ASD-STE100 规范</text>
+<path d="M64 116 L1044 116" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<rect x="365" y="151" width="378" height="82" fill="#e5edf6" stroke="#536477" stroke-width="1.6"/>
+<text xml:space="preserve" x="554" y="186" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="29" font-weight="700" fill="#17283b" text-anchor="middle">ASD-STE100</text>
+<text xml:space="preserve" x="554" y="216" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="500" fill="#17283b" text-anchor="middle">简化技术英语</text>
+<path d="M554 233 L554 261" fill="none" stroke="#536477" stroke-width="1.6"/>
+<path d="M320 261 L786 261" fill="none" stroke="#536477" stroke-width="1.6"/>
+<path d="M320 261 L320 282" fill="none" stroke="#536477" stroke-width="1.6"/>
+<path d="M786 261 L786 282" fill="none" stroke="#536477" stroke-width="1.6"/>
+<rect x="88" y="282" width="446" height="52" fill="white" stroke="#536477" stroke-width="1.5"/>
+<rect x="564" y="282" width="456" height="52" fill="white" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="311" y="316" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="26" font-weight="600" fill="#17283b" text-anchor="middle">第 1 部分：写作规则</text>
+<text xml:space="preserve" x="792" y="316" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="26" font-weight="600" fill="#17283b" text-anchor="middle">第 2 部分：词典</text>
+<path d="M111 334 L111 643" fill="none" stroke="#536477" stroke-width="1.5"/>
+<path d="M111 363 L134 363" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="372" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 1 节</text>
+<text xml:space="preserve" x="256" y="372" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">词语</text>
+<path d="M111 396 L134 396" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="405" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 2 节</text>
+<text xml:space="preserve" x="256" y="405" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">名词组</text>
+<path d="M111 429 L134 429" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="438" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 3 节</text>
+<text xml:space="preserve" x="256" y="438" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">动词</text>
+<path d="M111 462 L134 462" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="471" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 4 节</text>
+<text xml:space="preserve" x="256" y="471" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">句子</text>
+<path d="M111 495 L134 495" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="504" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 5 节</text>
+<text xml:space="preserve" x="256" y="504" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">操作步骤</text>
+<path d="M111 528 L134 528" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="537" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 6 节</text>
+<text xml:space="preserve" x="256" y="537" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">描述性写作</text>
+<path d="M111 561 L134 561" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="570" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 7 节</text>
+<text xml:space="preserve" x="256" y="570" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">安全指令</text>
+<path d="M111 594 L134 594" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="603" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 8 节</text>
+<text xml:space="preserve" x="256" y="603" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">标点与词数</text>
+<path d="M111 627 L134 627" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="148" y="636" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">第 9 节</text>
+<text xml:space="preserve" x="256" y="636" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="400" fill="#17283b" text-anchor="start">写作实践</text>
+<path d="M589 334 L589 603" fill="none" stroke="#536477" stroke-width="1.5"/>
+<path d="M589 360 L610 360" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="622" y="370" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="start">准用词</text>
+<text xml:space="preserve" x="622" y="398" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">词条大写；一个词义</text>
+<path d="M589 427 L610 427" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="622" y="437" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="start">非准用词</text>
+<text xml:space="preserve" x="622" y="465" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">词条小写；列出准用替代词</text>
+<path d="M589 494 L610 494" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="622" y="504" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="start">技术名称</text>
+<text xml:space="preserve" x="622" y="532" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">企业术语；类别有规定</text>
+<path d="M589 561 L610 561" fill="none" stroke="#536477" stroke-width="1.5"/>
+<text xml:space="preserve" x="622" y="571" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="start">技术动词</text>
+<text xml:space="preserve" x="622" y="599" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">企业动词；类别有规定</text>
+<rect x="565" y="632" width="455" height="70" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.4"/>
+<text xml:space="preserve" x="585" y="661" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="start">约 900 个准用词</text>
+<text xml:space="preserve" x="585" y="690" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">每个词：一种词性、一个词义</text>
+<text xml:space="preserve" x="88" y="721" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">规则按章节编号。例如，规则 5.1 属于第 5 节“操作步骤”。</text>
+<rect x="1064" y="64" width="1190" height="680" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="1064" y="64" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="1088" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">B</text>
+<text xml:space="preserve" x="1130" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">STE 句子拆解</text>
+<text xml:space="preserve" x="2236" y="98" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="end">带标注的例句</text>
+<path d="M1064 116 L2254 116" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="1088" y="142" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">原句（不符合 STE）：非准用词用红色显示</text>
+<text xml:space="preserve" x="1088" y="172" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" fill="#17283b"><tspan fill="#17283b">It is </tspan><tspan fill="#bb2323">imperative</tspan><tspan fill="#17283b"> that the operator </tspan><tspan fill="#bb2323">ensures</tspan><tspan fill="#17283b"> the hydraulic reservoir is </tspan><tspan fill="#bb2323">replenished</tspan></text>
+<text xml:space="preserve" x="1088" y="198" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" fill="#17283b"><tspan fill="#bb2323">prior to</tspan><tspan fill="#17283b"> </tspan><tspan fill="#bb2323">commencing</tspan><tspan fill="#17283b"> operation.</tspan></text>
+<text xml:space="preserve" x="1088" y="228" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">操作员必须在开始操作前确认液压储液箱已加满。</text>
+<path d="M1088 242 L2230 242" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<text xml:space="preserve" x="1088" y="272" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="600" fill="#17283b" text-anchor="start">1 操作句（改写同一条指令）</text>
+<text xml:space="preserve" x="2230" y="272" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="end">13 个英文词；上限 20</text>
+<text xml:space="preserve" x="1088" y="307" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="22" font-weight="500" fill="#17283b" text-anchor="start">Make sure that the hydraulic reservoir is full before you start the operation.</text>
+<text xml:space="preserve" x="1088" y="337" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">开始操作前，确认液压储液箱已加满。</text>
+<path d="M1088 358 L1094 358" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1102" y="367" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">Make sure</text>
+<text xml:space="preserve" x="1102" y="391" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">准用动词；命令形式</text>
+<path d="M1469 358 L1475 358" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1483" y="367" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">hydraulic reservoir</text>
+<text xml:space="preserve" x="1483" y="391" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">技术名称；2 词名词组（最多 3 词）</text>
+<path d="M1850 358 L1856 358" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1864" y="367" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">full</text>
+<text xml:space="preserve" x="1864" y="391" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">不用 replenished</text>
+<path d="M1088 406 L1094 406" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1102" y="415" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">before</text>
+<text xml:space="preserve" x="1102" y="439" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">不用 prior to</text>
+<path d="M1469 406 L1475 406" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1483" y="415" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">you start</text>
+<text xml:space="preserve" x="1483" y="439" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">主动语态</text>
+<path d="M1850 406 L1856 406" fill="none" stroke="#1767bd" stroke-width="3"/>
+<text xml:space="preserve" x="1864" y="415" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="18" font-weight="600" fill="#1767bd" text-anchor="start">start</text>
+<text xml:space="preserve" x="1864" y="439" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="18" font-weight="400" fill="#1767bd" text-anchor="start">不用 commencing</text>
+<path d="M1088 447 L2230 447" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<text xml:space="preserve" x="1088" y="478" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="600" fill="#17283b" text-anchor="start">2 安全指令</text>
+<text xml:space="preserve" x="1088" y="510" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="500" fill="#17283b" text-anchor="start">WARNING: Do not touch the brake unit until it is cool. Hot parts can cause injury.</text>
+<text xml:space="preserve" x="1088" y="540" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">警告：制动装置冷却前不要触碰。高温部件可能造成人身伤害。</text>
+<text xml:space="preserve" x="1088" y="569" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">先：明确、简单的指令</text>
+<text xml:space="preserve" x="1700" y="569" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">后：说明风险</text>
+<text xml:space="preserve" x="1088" y="598" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">WARNING：人身伤害风险。CAUTION：损坏风险。</text>
+<path d="M1088 613 L2230 613" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<text xml:space="preserve" x="1088" y="643" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="600" fill="#17283b" text-anchor="start">3 描述句</text>
+<text xml:space="preserve" x="2230" y="643" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="end">12 个英文词；上限 25</text>
+<text xml:space="preserve" x="1088" y="674" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="500" fill="#17283b" text-anchor="start">The pump supplies fuel to the engine when the switch is on.</text>
+<text xml:space="preserve" x="1088" y="705" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">开关接通时，泵向发动机供油。</text>
+<text xml:space="preserve" x="1530" y="705" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">一般现在时</text>
+<text xml:space="preserve" x="2230" y="727" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="19" font-weight="400" fill="#536477" text-anchor="end">每段最多 6 句；一段只讲一个主题</text>
+<rect x="2275" y="64" width="861" height="680" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="2275" y="64" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="2299" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">C</text>
+<text xml:space="preserve" x="2341" y="100" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">动词形式</text>
+<text xml:space="preserve" x="3118" y="98" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="end">第 3 节</text>
+<path d="M2275 116 L3136 116" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2293" y="151" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">形式</text>
+<text xml:space="preserve" x="2594" y="151" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">英文例句</text>
+<text xml:space="preserve" x="2958" y="151" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">状态</text>
+<path d="M2275 164 L3136 164" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<rect x="2276" y="164" width="859" height="49" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="2293" y="196" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">命令式（祈使语气）</text>
+<text xml:space="preserve" x="2594" y="196" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">Close the valve.</text>
+<path d="M2958 187 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="196" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<text xml:space="preserve" x="2293" y="245" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">一般现在时</text>
+<text xml:space="preserve" x="2594" y="245" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve closes.</text>
+<path d="M2958 236 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="245" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<rect x="2276" y="262" width="859" height="49" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="2293" y="294" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">一般过去时</text>
+<text xml:space="preserve" x="2594" y="294" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve closed.</text>
+<path d="M2958 285 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="294" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<text xml:space="preserve" x="2293" y="343" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">一般将来时</text>
+<text xml:space="preserve" x="2594" y="343" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve will close.</text>
+<path d="M2958 334 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="343" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<rect x="2276" y="360" width="859" height="49" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="2293" y="392" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">不定式</text>
+<text xml:space="preserve" x="2594" y="392" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">Turn the knob to close it.</text>
+<path d="M2958 383 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="392" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<text xml:space="preserve" x="2293" y="441" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">过去分词（作形容词）</text>
+<text xml:space="preserve" x="2594" y="441" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The closed valve</text>
+<path d="M2958 432 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="2988" y="441" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<rect x="2276" y="458" width="859" height="49" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="2293" y="490" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">进行时（-ing）</text>
+<text xml:space="preserve" x="2594" y="490" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve is closing.</text>
+<path d="M2958 474 L2975 490" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M2958 490 L2975 474" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="2988" y="490" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="2293" y="539" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">完成时</text>
+<text xml:space="preserve" x="2594" y="539" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve has closed.</text>
+<path d="M2958 523 L2975 539" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M2958 539 L2975 523" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="2988" y="539" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<rect x="2276" y="556" width="859" height="49" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="2293" y="588" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">操作步骤中的被动语态</text>
+<text xml:space="preserve" x="2594" y="588" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">The valve must be closed.</text>
+<path d="M2958 572 L2975 588" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M2958 588 L2975 572" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="2988" y="588" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<path d="M2275 619 L3136 619" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<text xml:space="preserve" x="2293" y="659" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">-ing 形式仅用于技术名称，例如 landing gear（起落架）。</text>
+<text xml:space="preserve" x="2293" y="702" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">描述性文本仅在必要时使用被动语态。</text>
+<rect x="64" y="764" width="1450" height="760" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="64" y="764" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="88" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">D</text>
+<text xml:space="preserve" x="130" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">词典词条</text>
+<text xml:space="preserve" x="1496" y="798" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="end">第 2 部分格式</text>
+<path d="M64 816 L1514 816" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="78" y="853" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">词语（词性）</text>
+<text xml:space="preserve" x="308" y="853" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">状态</text>
+<text xml:space="preserve" x="448" y="853" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">词义或替代词</text>
+<text xml:space="preserve" x="693" y="853" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">准用例句</text>
+<text xml:space="preserve" x="1100" y="853" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">非准用例句</text>
+<path d="M64 878 L1514 878" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<rect x="65" y="878" width="1448" height="50" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="78" y="910" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">CLOSE (v)</text>
+<path d="M308 901 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="338" y="910" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<text xml:space="preserve" x="448" y="910" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">合拢；阻止流动</text>
+<text xml:space="preserve" x="693" y="910" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">CLOSE the valve.</text>
+<text xml:space="preserve" x="1100" y="910" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#536477" text-anchor="start">–</text>
+<text xml:space="preserve" x="78" y="960" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">close (adj)</text>
+<path d="M308 944 L325 960" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 960 L325 944" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="960" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="960" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">NEAR</text>
+<text xml:space="preserve" x="693" y="960" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">Put the tool NEAR the panel.</text>
+<text xml:space="preserve" x="1100" y="960" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Put the tool close to the panel.</text>
+<rect x="65" y="978" width="1448" height="50" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="78" y="1010" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">commence (v)</text>
+<path d="M308 994 L325 1010" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1010 L325 994" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1010" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1010" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">START</text>
+<text xml:space="preserve" x="693" y="1010" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">START the pump.</text>
+<text xml:space="preserve" x="1100" y="1010" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Commence pumping.</text>
+<text xml:space="preserve" x="78" y="1060" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">ensure (v)</text>
+<path d="M308 1044 L325 1060" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1060 L325 1044" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1060" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1060" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">MAKE SURE</text>
+<text xml:space="preserve" x="693" y="1060" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">MAKE SURE THAT the switch is off.</text>
+<text xml:space="preserve" x="1100" y="1060" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Ensure the switch is off.</text>
+<rect x="65" y="1078" width="1448" height="50" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="78" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">prior to (prep)</text>
+<path d="M308 1094 L325 1110" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1110 L325 1094" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1110" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">BEFORE</text>
+<text xml:space="preserve" x="693" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">BEFORE you start the engine,</text>
+<text xml:space="preserve" x="1100" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Prior to starting the engine,</text>
+<text xml:space="preserve" x="78" y="1160" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">replenish (v)</text>
+<path d="M308 1144 L325 1160" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1160 L325 1144" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1160" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1160" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">FILL</text>
+<text xml:space="preserve" x="693" y="1160" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">FILL the reservoir.</text>
+<text xml:space="preserve" x="1100" y="1160" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Replenish the reservoir.</text>
+<rect x="65" y="1178" width="1448" height="50" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="78" y="1210" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">utilize (v)</text>
+<path d="M308 1194 L325 1210" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1210 L325 1194" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1210" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1210" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">USE</text>
+<text xml:space="preserve" x="693" y="1210" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">USE a torque wrench.</text>
+<text xml:space="preserve" x="1100" y="1210" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Utilize a torque wrench.</text>
+<text xml:space="preserve" x="78" y="1260" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">approximately (adv)</text>
+<path d="M308 1244 L325 1260" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1260 L325 1244" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1260" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1260" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">ABOUT</text>
+<text xml:space="preserve" x="693" y="1260" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">Wait for ABOUT 10 minutes.</text>
+<text xml:space="preserve" x="1100" y="1260" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Wait approximately 10 minutes.</text>
+<rect x="65" y="1278" width="1448" height="50" fill="#f3f6f9" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="78" y="1310" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">TEST (v)</text>
+<path d="M308 1301 l7 7 l13 -17" fill="none" stroke="#1767bd" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text xml:space="preserve" x="338" y="1310" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#1767bd" text-anchor="start">准用</text>
+<text xml:space="preserve" x="448" y="1310" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#17283b" text-anchor="start">检查是否正常工作</text>
+<text xml:space="preserve" x="693" y="1310" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">TEST the circuit.</text>
+<text xml:space="preserve" x="1100" y="1310" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#536477" text-anchor="start">–</text>
+<text xml:space="preserve" x="78" y="1360" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="600" fill="#17283b" text-anchor="start">in order to</text>
+<path d="M308 1344 L325 1360" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<path d="M308 1360 L325 1344" fill="none" stroke="#bb2323" stroke-width="2.8"/>
+<text xml:space="preserve" x="338" y="1360" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#bb2323" text-anchor="start">不准用</text>
+<text xml:space="preserve" x="448" y="1360" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="20" font-weight="400" fill="#1767bd" text-anchor="start">TO</text>
+<text xml:space="preserve" x="693" y="1360" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#17283b" text-anchor="start">Remove the panel TO get access.</text>
+<text xml:space="preserve" x="1100" y="1348" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">Remove the panel in order to</text>
+<text xml:space="preserve" x="1100" y="1371" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="19" font-weight="400" fill="#bb2323" text-anchor="start">access.</text>
+<path d="M64 1392 L1514 1392" fill="none" stroke="#cbd5df" stroke-width="1.3"/>
+<text xml:space="preserve" x="88" y="1426" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">图中约定：准用词以大写显示，非准用词以小写显示。</text>
+<text xml:space="preserve" x="88" y="1461" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">准用词仅采用词典列出的词义和词性。例如 close 准作动词，不准作表示“附近”的形容词。</text>
+<text xml:space="preserve" x="88" y="1500" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">词性缩写：v 动词；adj 形容词；prep 介词；adv 副词。</text>
+<rect x="1534" y="764" width="720" height="760" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="1534" y="764" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="1558" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">E</text>
+<text xml:space="preserve" x="1600" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">写作规则的数量上限</text>
+<text xml:space="preserve" x="2236" y="798" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="end">最大值</text>
+<path d="M1534 816 L2254 816" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="1558" y="862" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="500" fill="#17283b" text-anchor="start">操作句</text>
+<text xml:space="preserve" x="2230" y="862" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="23" font-weight="500" fill="#1767bd" text-anchor="end">最多 20 个英文词</text>
+<rect x="1560" y="883" width="667" height="16" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.2"/>
+<rect x="1560" y="883" width="444.6666666666667" height="16" fill="#e6eef8" stroke="#1767bd" stroke-width="1.4"/>
+<path d="M2004.6666666666667 879 L2004.6666666666667 905" fill="none" stroke="#1767bd" stroke-width="2"/>
+<path d="M1560 899 L1560 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1560" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">0</text>
+<path d="M1671.1666666666667 899 L1671.1666666666667 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1671.1666666666667" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<path d="M1782.3333333333333 899 L1782.3333333333333 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1782.3333333333333" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">10</text>
+<path d="M1893.5 899 L1893.5 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1893.5" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">15</text>
+<path d="M2004.6666666666667 899 L2004.6666666666667 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2004.6666666666667" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">20</text>
+<path d="M2115.8333333333335 899 L2115.8333333333335 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2115.8333333333335" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">25</text>
+<path d="M2227 899 L2227 908" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2227" y="930" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">30</text>
+<text xml:space="preserve" x="1558" y="952" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="500" fill="#17283b" text-anchor="start">描述句</text>
+<text xml:space="preserve" x="2230" y="952" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="23" font-weight="500" fill="#1767bd" text-anchor="end">最多 25 个英文词</text>
+<rect x="1560" y="973" width="667" height="16" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.2"/>
+<rect x="1560" y="973" width="555.8333333333334" height="16" fill="#e6eef8" stroke="#1767bd" stroke-width="1.4"/>
+<path d="M2115.8333333333335 969 L2115.8333333333335 995" fill="none" stroke="#1767bd" stroke-width="2"/>
+<path d="M1560 989 L1560 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1560" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">0</text>
+<path d="M1671.1666666666667 989 L1671.1666666666667 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1671.1666666666667" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<path d="M1782.3333333333333 989 L1782.3333333333333 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1782.3333333333333" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">10</text>
+<path d="M1893.5 989 L1893.5 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1893.5" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">15</text>
+<path d="M2004.6666666666667 989 L2004.6666666666667 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2004.6666666666667" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">20</text>
+<path d="M2115.8333333333335 989 L2115.8333333333335 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2115.8333333333335" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">25</text>
+<path d="M2227 989 L2227 998" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2227" y="1020" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">30</text>
+<text xml:space="preserve" x="1558" y="1042" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="500" fill="#17283b" text-anchor="start">描述性段落</text>
+<text xml:space="preserve" x="2230" y="1042" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="23" font-weight="500" fill="#1767bd" text-anchor="end">最多 6 句</text>
+<rect x="1560" y="1063" width="667" height="16" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.2"/>
+<rect x="1560" y="1063" width="400.2" height="16" fill="#e6eef8" stroke="#1767bd" stroke-width="1.4"/>
+<path d="M1960.2 1059 L1960.2 1085" fill="none" stroke="#1767bd" stroke-width="2"/>
+<path d="M1560 1079 L1560 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1560" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">0</text>
+<path d="M1626.7 1079 L1626.7 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1626.7" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">1</text>
+<path d="M1693.4 1079 L1693.4 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1693.4" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">2</text>
+<path d="M1760.1 1079 L1760.1 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1760.1" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">3</text>
+<path d="M1826.8 1079 L1826.8 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1826.8" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">4</text>
+<path d="M1893.5 1079 L1893.5 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1893.5" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<path d="M1960.2 1079 L1960.2 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1960.2" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">6</text>
+<path d="M2026.9 1079 L2026.9 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2026.9" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">7</text>
+<path d="M2093.6 1079 L2093.6 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2093.6" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">8</text>
+<path d="M2160.3 1079 L2160.3 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2160.3" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">9</text>
+<path d="M2227 1079 L2227 1088" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2227" y="1110" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">10</text>
+<text xml:space="preserve" x="1558" y="1132" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="500" fill="#17283b" text-anchor="start">名词组</text>
+<text xml:space="preserve" x="2230" y="1132" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="23" font-weight="500" fill="#1767bd" text-anchor="end">最多 3 个英文词</text>
+<rect x="1560" y="1153" width="667" height="16" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.2"/>
+<rect x="1560" y="1153" width="400.2" height="16" fill="#e6eef8" stroke="#1767bd" stroke-width="1.4"/>
+<path d="M1960.2 1149 L1960.2 1175" fill="none" stroke="#1767bd" stroke-width="2"/>
+<path d="M1560 1169 L1560 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1560" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">0</text>
+<path d="M1693.4 1169 L1693.4 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1693.4" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">1</text>
+<path d="M1826.8 1169 L1826.8 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1826.8" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">2</text>
+<path d="M1960.2 1169 L1960.2 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1960.2" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">3</text>
+<path d="M2093.6 1169 L2093.6 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2093.6" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">4</text>
+<path d="M2227 1169 L2227 1178" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2227" y="1200" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">5</text>
+<text xml:space="preserve" x="1558" y="1222" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="24" font-weight="500" fill="#17283b" text-anchor="start">每句指令数量</text>
+<text xml:space="preserve" x="2230" y="1222" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="23" font-weight="500" fill="#1767bd" text-anchor="end">最多 1 条</text>
+<text xml:space="preserve" x="1558" y="1248" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="19" font-weight="400" fill="#536477" text-anchor="start">（同时发生的动作除外）</text>
+<rect x="1560" y="1265" width="667" height="16" fill="#f3f6f9" stroke="#cbd5df" stroke-width="1.2"/>
+<rect x="1560" y="1265" width="222.33333333333334" height="16" fill="#e6eef8" stroke="#1767bd" stroke-width="1.4"/>
+<path d="M1782.3333333333333 1261 L1782.3333333333333 1287" fill="none" stroke="#1767bd" stroke-width="2"/>
+<path d="M1560 1281 L1560 1290" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1560" y="1312" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">0</text>
+<path d="M1782.3333333333333 1281 L1782.3333333333333 1290" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="1782.3333333333333" y="1312" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">1</text>
+<path d="M2004.6666666666667 1281 L2004.6666666666667 1290" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2004.6666666666667" y="1312" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">2</text>
+<path d="M2227 1281 L2227 1290" fill="none" stroke="#536477" stroke-width="1"/>
+<text xml:space="preserve" x="2227" y="1312" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="17" font-weight="400" fill="#536477" text-anchor="middle">3</text>
+<rect x="1559" y="1326" width="8" height="8" fill="#17283b" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="1580" y="1340" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">同一事物始终使用同一个词。</text>
+<rect x="1559" y="1359" width="8" height="8" fill="#17283b" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="1580" y="1373" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">不要省略 the、a、this 等词。</text>
+<rect x="1559" y="1392" width="8" height="8" fill="#17283b" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="1580" y="1406" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">操作步骤使用主动语态。</text>
+<rect x="1559" y="1425" width="8" height="8" fill="#17283b" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="1580" y="1439" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">复杂内容使用纵向列表。</text>
+<rect x="1559" y="1458" width="8" height="8" fill="#17283b" stroke="none" stroke-width="0"/>
+<text xml:space="preserve" x="1580" y="1472" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#17283b" text-anchor="start">一段只讲一个主题。</text>
+<rect x="2275" y="764" width="861" height="388" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<rect x="2275" y="764" width="48" height="52" fill="#17283b" stroke="#17283b" stroke-width="0"/>
+<text xml:space="preserve" x="2299" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">F</text>
+<text xml:space="preserve" x="2341" y="800" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="29" font-weight="700" fill="#17283b" text-anchor="start">发展历史</text>
+<path d="M2275 816 L3136 816" fill="none" stroke="#17283b" stroke-width="1.8"/>
+<path d="M2320 879 L3092 879" fill="none" stroke="#536477" stroke-width="1.8"/>
+<text xml:space="preserve" x="2340" y="851" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="25" font-weight="600" fill="#17283b" text-anchor="middle">1979</text>
+<circle cx="2340" cy="879" r="8" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2293" y="927" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">AECMA 开始为</text>
+<text xml:space="preserve" x="2293" y="956" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">航空业制定</text>
+<text xml:space="preserve" x="2293" y="985" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">受控英语。</text>
+<text xml:space="preserve" x="2560" y="851" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="25" font-weight="600" fill="#17283b" text-anchor="middle">1986</text>
+<circle cx="2560" cy="879" r="8" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2484" y="927" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">首版 AECMA</text>
+<text xml:space="preserve" x="2484" y="956" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">简化英语指南</text>
+<text xml:space="preserve" x="2484" y="985" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">发布。</text>
+<text xml:space="preserve" x="2776" y="851" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="25" font-weight="600" fill="#17283b" text-anchor="middle">2005</text>
+<circle cx="2776" cy="879" r="8" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2700" y="927" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">AECMA 于 2004 年</text>
+<text xml:space="preserve" x="2700" y="956" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">加入 ASD 后，</text>
+<text xml:space="preserve" x="2700" y="985" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">名称改为</text>
+<text xml:space="preserve" x="2700" y="1014" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">ASD-STE100。</text>
+<text xml:space="preserve" x="3023" y="851" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="25" font-weight="600" fill="#17283b" text-anchor="middle">至今</text>
+<circle cx="3023" cy="879" r="8" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2947" y="927" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">可免费下载；</text>
+<text xml:space="preserve" x="2947" y="956" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">由 ASD STEMG</text>
+<text xml:space="preserve" x="2947" y="985" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">修订。</text>
+<text xml:space="preserve" x="2293" y="1128" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="21" font-weight="400" fill="#536477" text-anchor="start">STEMG：简化技术英语维护组</text>
+<rect x="2275" y="1172" width="861" height="352" fill="white" stroke="#17283b" stroke-width="1.8"/>
+<text xml:space="preserve" x="2293" y="1208" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="20" font-weight="400" fill="#536477" text-anchor="start">标题</text>
+<text xml:space="preserve" x="2370" y="1210" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="28" font-weight="600" fill="#17283b" text-anchor="start">简化技术英语：概览</text>
+<path d="M2275 1227 L3136 1227" fill="none" stroke="#17283b" stroke-width="1.5"/>
+<path d="M2706 1227 L2706 1524" fill="none" stroke="#17283b" stroke-width="1.5"/>
+<text xml:space="preserve" x="2293" y="1261" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">规范</text>
+<text xml:space="preserve" x="2293" y="1300" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">ASD-STE100</text>
+<text xml:space="preserve" x="2724" y="1261" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">所属机构</text>
+<text xml:space="preserve" x="2724" y="1300" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">ASD</text>
+<path d="M2275 1326 L3136 1326" fill="none" stroke="#17283b" stroke-width="1.5"/>
+<text xml:space="preserve" x="2293" y="1360" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">最初应用领域</text>
+<text xml:space="preserve" x="2293" y="1399" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">飞机维护</text>
+<text xml:space="preserve" x="2724" y="1360" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">现也用于</text>
+<text xml:space="preserve" x="2724" y="1399" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">国防、铁路、工业</text>
+<path d="M2275 1425 L3136 1425" fill="none" stroke="#17283b" stroke-width="1.5"/>
+<text xml:space="preserve" x="2293" y="1459" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">来源</text>
+<text xml:space="preserve" x="2293" y="1498" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">asd-ste100.org</text>
+<text xml:space="preserve" x="2724" y="1459" font-family="Microsoft YaHei,Noto Sans CJK SC,sans-serif" font-size="22" font-weight="400" fill="#536477" text-anchor="start">页码</text>
+<text xml:space="preserve" x="2724" y="1498" font-family="Consolas,DejaVu Sans Mono,monospace" font-size="26" font-weight="500" fill="#17283b" text-anchor="start">1 / 1</text></svg>
