@@ -1,5 +1,6 @@
 package example.agent.demo;
 
+import example.agent.context.ContextLab;
 import example.agent.dto.AgentResultDTO;
 import example.agent.dto.AskDTO;
 import example.agent.service.DocAgent;
@@ -7,35 +8,50 @@ import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/** 命令行教学流程；仅在显式传入 --guided 或 --stage 时运行，不参与 HTTP 请求。 */
+/** 显式命令行教学流程；支持原有阶段练习和上下文真实模型实验，不参与 HTTP 请求。 */
 @Component
 public class DemoRunner implements ApplicationRunner {
     /** 教学控制台输出；引导模式会展示用户输入及固定公开文档。 */
     private static final Logger log = LoggerFactory.getLogger(DemoRunner.class);
     /** 实际执行教学阶段的应用服务，所有模型调用经此服务完成。 */
     private final DocAgent agent;
+    /** 上下文实验单独包装此客户端收集教学记录；普通 HTTP 请求不记录完整上下文。 */
+    private final ChatModel model;
 
     /**
      * 注入阶段执行服务，不在构造时发起模型调用。
      *
      * @param agent Spring 注入的文档 Agent
+     * @param model Spring 配置的模型客户端
      */
-    public DemoRunner(DocAgent agent) {
+    public DemoRunner(DocAgent agent, ChatModel model) {
         this.agent = agent;
+        this.model = model;
     }
 
     /**
-     * 按启动参数选择教学流程；--guided 优先于 --stage，二者均缺省时直接返回。
+     * 上下文实验与原有教学参数互斥；否则 --guided 优先于 --stage。
      * 单阶段模式从非选项参数拼接问题，非法阶段文本或缺少问题时只显示提示。
      *
      * @param args Spring 提供的启动参数，包含教学选项及本次问题
+     * @throws java.io.IOException 上下文报告无法写入
      */
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(ApplicationArguments args) throws java.io.IOException {
+        if (args.containsOption("context-live")) {
+            var modes = args.getOptionValues("context-live");
+            if (modes == null || modes.size() != 1 || args.containsOption("guided")
+                    || args.containsOption("stage") || !args.getNonOptionArgs().isEmpty()) {
+                throw new IllegalArgumentException("请单独使用 --context-live=baseline|rules|eager|ondemand|state|compact。");
+            }
+            ContextLab.live(model, modes.getFirst());
+            return;
+        }
         if (args.containsOption("guided")) {
             guided();
             return;

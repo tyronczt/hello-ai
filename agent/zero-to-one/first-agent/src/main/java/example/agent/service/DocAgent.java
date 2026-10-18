@@ -1,5 +1,7 @@
 package example.agent.service;
 
+import example.agent.context.ContextMode;
+import example.agent.context.ContextSession;
 import example.agent.dto.AgentResultDTO;
 import example.agent.dto.AskDTO;
 import example.agent.tool.DocTools;
@@ -21,6 +23,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.support.ToolCallbacks;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Service;
 
 /**
@@ -83,16 +86,37 @@ public class DocAgent {
     }
 
     /**
+     * 仅供第 03 篇命令行实验使用；每次运行新建上下文状态，不改变 HTTP 默认路径。
+     * @param request 本次固定教学问题
+     * @param mode 显式选择的上下文策略
+     * @return 实际工具循环的结果与轨迹
+     */
+    public AgentResultDTO runContext(AskDTO request, ContextMode mode) {
+        return run(request.question(), 3, java.util.Objects.requireNonNull(mode));
+    }
+
+    /**
+     * 保持既有 HTTP 与四阶段入口的上下文行为。
+     * @param question 当前问题
+     * @param stage 原有教学阶段
+     * @return 当前任务结果
+     */
+    private AgentResultDTO run(String question, int stage) {
+        return run(question, stage, null);
+    }
+
+    /**
      * 运行一次互不共享历史的任务。阶段 0～2 只调用一次模型，用来比较问题、规则和全文上下文；
      * 阶段 3 从任务规则、问题和工具定义开始，反复执行“调用模型 → 校验工具请求 → Java 执行工具 → 回填结果”。
      * 模型不再请求工具且返回非空文字时得到候选答案；输入无效、预算耗尽或执行失败时返回停止原因。
      *
      * @param question 当前请求的问题，不从其他用户或上一次请求继承
      * @param stage 教学阶段 0～3；HTTP 入口固定传入 3
+     * @param contextMode 上下文实验策略；null 表示原有行为
      * @return 本次任务的状态、候选答案或停止原因，以及独立的执行轨迹
      * @throws RuntimeException 请求准备等未转换为停止结果的执行异常，记录脱敏日志后继续传播
      */
-    private AgentResultDTO run(String question, int stage) {
+    private AgentResultDTO run(String question, int stage, ContextMode contextMode) {
         // 同时处理多个用户时，用任务 ID 将同一次运行的日志串起来；不记录问题和答案正文。
         String taskId = UUID.randomUUID().toString();
         long started = System.nanoTime();
@@ -101,7 +125,7 @@ public class DocAgent {
         }
         AgentResultDTO result;
         try {
-            result = execute(question, stage, taskId);
+            result = execute(question, stage, taskId, contextMode);
         } catch (RuntimeException ex) {
             // 创建模型选项等意外失败仍保留原有抛出行为，但补上可定位的日志。
             logExecutionFailure(taskId, stage, "setup", ex);
@@ -127,10 +151,11 @@ public class DocAgent {
      * @param question 本次问题；null、空白或超过 1000 个字符时返回 STOPPED
      * @param stage 教学阶段 0～3，非法值返回 STOPPED
      * @param taskId 仅用于关联本次执行日志的任务标识
+     * @param contextMode 第 03 篇的策略；null 不启用扩展
      * @return 候选答案或停止原因，模型和工具调用失败通常转换为 STOPPED
      * @throws RuntimeException 构建模型选项或初始请求等内部异常处理范围之外的异常
      */
-    private AgentResultDTO execute(String question, int stage, String taskId) {
+    private AgentResultDTO execute(String question, int stage, String taskId, ContextMode contextMode) {
         // 本次请求的主循环和工具回调都会向 trace 添加事件；synchronizedList 为 add 等单次操作加锁，
         // 避免同一请求内并发写入破坏列表。它不保证遍历等组合操作安全；本例在工具执行结束后
         // 才由 AgentResultDTO 复制列表，返回给调用方的是不可变快照。
@@ -164,6 +189,12 @@ public class DocAgent {
                 return stopped("模型调用失败，请检查服务状态与配置。", trace);
             }
         }
+        ContextSession context = contextMode == null ? null : new ContextSession(contextMode);
+        List<ToolCallback> callbacks = new ArrayList<>(Arrays.asList(
+                ToolCallbacks.from(new DocTools(event -> addTrace(trace, taskId, event)))));
+        if (context != null && context.skills() != null) {
+            callbacks.addAll(Arrays.asList(ToolCallbacks.from(context.skills())));
+        }
         // 阶段 3 使用 Spring AI 的 OpenAI 兼容选项，配置模型参数和可请求的工具。
         // 这里只注册工具，不会执行工具；下面收到模型的工具请求后才交给 ToolCallingManager。
         var options = OpenAiChatOptions.builder()
@@ -177,11 +208,13 @@ public class DocAgent {
                 .extraBody(Map.of("thinking", Map.of("type", "disabled")))
                 // 将 DocTools 中的 @Tool 方法注册为可请求的工具；每个请求创建自己的实例和轨迹回调。
                 // 模型只能提出调用，Java 仍要检查名称、预算和参数后才能执行。
-                .toolCallbacks(ToolCallbacks.from(new DocTools(event -> addTrace(trace, taskId, event))))
+                .toolCallbacks(callbacks)
                 .build();
-        // 初始消息：阶段 3 只有任务规则和用户问题，没有文档正文；工具定义来自上面的 options。
-        // Prompt 把消息和选项合在一起，供第一次 model.call(prompt) 使用。
-        var prompt = new Prompt(initialMessages(question, stage), options);
+        // 原有阶段 3 以规则和问题开始；显式上下文实验按策略加入指导或状态，都不提前放入文档事实。
+        // 工具定义来自 options，Prompt 将消息与选项组合后供第一次模型调用使用。
+        var initial = initialMessages(question, stage);
+        var prompt = new Prompt(context == null ? initial
+                : context.start(initial, MAX_MODEL_CALLS, MAX_TOOL_CALLS), options);
         // 任务预算只在模型调用前后检查，不能中断正在阻塞的 HTTP 请求。
         long started = System.nanoTime();
         int toolCalls = 0;
@@ -221,7 +254,8 @@ public class DocAgent {
                     return stopped("剩余调用预算不足，尚未完成。", trace);
                 }
                 // 在任何工具执行前检查整批名称，模型请求不等于获得执行权限。
-                if (calls.stream().anyMatch(call -> !ALLOWED_TOOLS.contains(call.name()))) {
+                if (calls.stream().anyMatch(call -> !ALLOWED_TOOLS.contains(call.name())
+                        && !(context != null && context.skills() != null && call.name().equals("readSkill")))) {
                     return stopped("模型请求了未开放的工具。", trace);
                 }
                 toolCalls += calls.size();
@@ -238,7 +272,9 @@ public class DocAgent {
                             taskId, round, calls.size(), Duration.ofNanos(System.nanoTime() - toolsStarted).toMillis());
                 }
                 // 把模型工具请求和对应工具响应保留在消息历史中，供模型继续决策。
-                prompt = new Prompt(result.conversationHistory(), options);
+                var history = result.conversationHistory();
+                prompt = new Prompt(context == null ? history
+                        : context.afterTools(history, round, toolCalls, MAX_MODEL_CALLS, MAX_TOOL_CALLS), options);
                 phase = "model";
             }
         } catch (RuntimeException ex) {

@@ -1,6 +1,6 @@
-# conversation-agent：框架工具循环与多轮对话
+# conversation-agent：框架工具循环与多轮对话（学习路径已废弃）
 
-[配套文章：让 Spring AI 管理工具循环与多轮对话](../03-spring-ai-conversation.md)。本项目与上一篇的 `first-agent` 独立，便于比较应用手写循环与框架托管。
+本示例对应的框架工具循环与内存会话学习路径已废弃，不再作为系列主线或补充实验。当前学习入口见[学习路线](../README.md)。以下保留既有示例的运行与验证说明。
 
 ## 运行
 
@@ -32,7 +32,7 @@ $params = @{
 Invoke-RestMethod @params
 ```
 
-保持会话 ID 再问“那它的默认值呢？”，然后换成 demo-b 重复追问。完整对照步骤见文章。资料依旧只有 v2；版本追问练习不新增 v1 事实。
+保持会话 ID 再问“那它的默认值呢？”，然后换成 demo-b 重复追问。再将路径改成 `stateless` 比较无历史请求，或重启服务后观察同一 ID 的历史。结合 `trace` 中的历史消息数、工具返回和答案依据判断结果。资料依旧只有 v2；版本追问练习不新增 v1 事实。
 
 响应包含 `status`、`answer`、`trace`。`COMPLETED` 表示本轮生成候选回复，可能是答案或追问；它不代表事实已经核验。`STOPPED` 表示失败、预算停止或会话繁忙；`CLEARED` 表示清空完成。工具轨迹包含固定公开教学文档正文，不适合直接套用到真实私有资料。
 
@@ -59,4 +59,4 @@ mvn package
 - `ConversationAgentTest`：12 项脚本模型检查，实际执行框架循环、工具与记忆，验证隔离、追问、预算、并发和失败恢复。
 - `HttpIntegrationTest`：1 项集成检查，启动本机随机端口模拟模型服务，经过真实 HTTP 入口和协议适配器，验证参数、工具回填、历史、清空及 400 响应。
 
-本次 `mvn package` 已通过 13 项检查并生成可运行 JAR。真实 DeepSeek 的回答质量和追问行为尚未验证；离线模型的预设响应不能替代线上验收。构建后也可在已配置密钥的终端用 `java -jar target/conversation-agent-0.0.1-SNAPSHOT.jar` 启动。
+该示例的既有离线验证记录为 `mvn package` 通过 13 项检查并生成可运行 JAR；本次结果以重新执行上述命令为准。真实 DeepSeek 的回答质量和追问行为尚未验证；离线模型的预设响应不能替代线上验收。构建后也可在已配置密钥的终端用 `java -jar target/conversation-agent-0.0.1-SNAPSHOT.jar` 启动。
