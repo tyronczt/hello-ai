@@ -1,0 +1,26 @@
+spring:
+  main:
+    banner-mode: off
+    web-application-type: none
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      timeout: 45s
+      max-retries: 0
+      chat:
+        completions-path: /chat/completions
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-flash}
+          temperature: 0
+          max-tokens: 2048
+          extra-body:
+            thinking:
+              type: disabled
+      embedding:
+        enabled: false
+    retry:
+      max-attempts: 1
+logging:
+  level:
+    root: WARN

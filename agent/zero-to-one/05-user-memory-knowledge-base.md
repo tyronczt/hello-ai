@@ -1,8 +1,8 @@
 # Javaer转Agent：用户记忆与知识库
 
-上一篇[《上下文工程》](03-context-engineering.md)讨论了模型在一项任务中需要看到什么。现在把时间拉长：一次提问结束之后，下次应该继续使用哪些信息？同一个助手面对不同用户、不同项目和不同版本的资料，又该怎样找到适用的依据？
+上一篇[《上下文工程》](04-context-engineering.md)讨论了模型在一项任务中需要看到什么。现在把时间拉长：一次提问结束之后，下次应该继续使用哪些信息？同一个助手面对不同用户、不同项目和不同版本的资料，又该怎样找到适用的依据？
 
-继续使用资料助手，可以把问题分成两类：
+提示词工程和上下文工程使用真实天气助手。本篇回到第 02 篇已经实现的资料助手，研究长期记忆与知识检索；天气项目没有因为保存运行报告就获得跨会话记忆。这里可以把问题分成两类：
 
 - 用户记忆：用户明确提供、允许保存，并且对后续任务有用的信息，例如某个项目使用的接口版本。
 - 知识库：经过整理、能够检索和核对的项目资料，例如订单接口文档与公共分页约定。
@@ -363,7 +363,7 @@ Spring AI 提供 RAG Advisor 与可组合的检索模块。具体接入前，需
 
 - [《深入理解 AI Agent》第三章](https://bojieli.github.io/ai-agent-book/astro/book/chapter3/)：用户记忆、RAG 与知识组织的主题参考。
 - [《深入理解 AI Agent》目录](https://bojieli.github.io/ai-agent-book/astro/#contents)：后续工具、运行环境等主题的入口。
-- [上一篇：上下文工程](03-context-engineering.md)：消息结构、按需加载、状态与压缩。
+- [上一篇：上下文工程](04-context-engineering.md)：消息结构、按需加载、状态与压缩。
 - [first-agent 运行说明](first-agent/README.md)：当前工具循环与资料检索的实验入口。
 - [Spring AI Chat Memory](https://docs.spring.io/spring-ai/reference/api/chat-memory.html)：会话消息管理与存储组件。
 - [Spring AI RAG](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)：检索增强流程与相关接入能力。
