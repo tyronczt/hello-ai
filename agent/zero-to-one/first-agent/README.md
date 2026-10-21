@@ -1,12 +1,12 @@
 # first-agent：通过 HTTP 提问的 Java 文档助手
 
-这是[《用 Java 做第一个 Agent》](../02-first-java-agent.md)与[《上下文工程》](../03-context-engineering.md)共用的示例项目。HTTP 模式接收订单文档问题，查找固定的两份教学资料，再返回答案和查找过程。第 03 篇另有六组上下文实验，可先在本机验证消息与工具机制。启动普通服务时不会自动向模型提问。
+这是[《用 Java 做第一个 Agent》](../02-first-java-agent.md)与[《上下文工程》](../04-context-engineering.md)共用的示例项目。HTTP 模式接收订单文档问题，查找固定的两份教学资料，再返回答案和查找过程。第 04 篇复用本项目的六组上下文实验，可先在本机验证消息与工具机制。启动普通服务时不会自动向模型提问。
 
 先认四个类：`AgentApplication` 决定启动 HTTP 服务还是练习；`DemoRunner` 带你做四阶段练习；`DocAgent` 决定什么时候问模型、什么时候查资料；`DocTools` 提供两份固定教学文档。练习中的提示和结果会出现在 IDEA 的 Run 控制台。
 
 环境：JDK 21、Maven 3.9.x、Spring Boot 4.1.1、Spring AI 2.0.1。真实模型入口沿用线上 DeepSeek `deepseek-flash`，密钥从 `DEEPSEEK_API_KEY` 环境变量读取；`--context-lab` 不读取模型密钥。
 
-## 第 03 篇：先运行上下文实验
+## 第 04 篇：先运行上下文实验
 
 在本模块目录执行以下命令。`java` 应指向 JDK 21，`mvn` 应已加入 PATH；Maven 首次构建需要下载依赖。
 
@@ -36,7 +36,7 @@ IDEA 中使用主类 `example.agent.AgentApplication`，程序实参设为 `--co
 - `offline-<模式>-*/report.json`：Spring AI 消息视图、工具定义、来源清单、字符指标与响应。
 - `offline-<模式>-*/wire-requests.json`：本机服务实际收到的 HTTP JSON。
 
-固定问题、两份文档、教学 Skills 均为公开样例；报告不保存 Header 或密钥。字段字符数使用 UTF-16 单元，不等于 Token 数；离线 `usage` 为 `null`，预设答案不能用于证明模型回答质量。详细图解、报文读取命令和验证边界见[第 03 篇](../03-context-engineering.md)。
+固定问题、两份文档、教学 Skills 均为公开样例；报告不保存 Header 或密钥。字段字符数使用 UTF-16 单元，不等于 Token 数；离线 `usage` 为 `null`，预设答案不能用于证明模型回答质量。详细图解、报文读取命令和验证边界见[第 04 篇](../04-context-engineering.md)。
 
 真实模型实验需配置好 `DEEPSEEK_API_KEY`，再将实参改为 `--context-live=ondemand` 等单个模式。它会产生真实用量，在 `live-<模式>-*/report.json` 保存固定教学问题的记录。`COMPLETED` 只表示有非空候选答案，仍要核对依据；`STOPPED` 会保存报告并使命令失败。此入口不支持 `all`，也不能与 `--guided`、`--stage` 混用。
 
@@ -111,4 +111,4 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8080/api/agent/ask' -Method Post -Conte
 mvn -q -DskipTests compile
 ```
 
-这只检查代码能否编译。第 03 篇的 `--context-lab` 另外执行本机机制断言；要观察真实模型是否读取文档，可运行 `--context-live=<模式>`，或在 IDEA 中启动服务并发送上面的 POST，再检查报告或响应轨迹。
+这只检查代码能否编译。第 04 篇的 `--context-lab` 另外执行本机机制断言；要观察真实模型是否读取文档，可运行 `--context-live=<模式>`，或在 IDEA 中启动服务并发送上面的 POST，再检查报告或响应轨迹。

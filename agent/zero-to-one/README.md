@@ -11,8 +11,8 @@
 | 00 | [学习资料](00-agent-resources.md) | 按问题查询的资源索引 |
 | 01 | [什么是 Agent](01-what-is-agent.md) | 保留现有概念篇，区分问答、Workflow 与 Agent |
 | 02 | [用 Java 做第一个 Agent](02-first-java-agent.md) | 保留已经实现的文档助手、四阶段练习与 HTTP 入口 |
-| 03 | [提示词工程](03-prompt-engineering.md) | 从真实天气任务解释规则、流程、示例和输出要求 |
-| 04 | [上下文工程](04-context-engineering.md) | 使用同一天气助手，观察消息、工具结果、运行状态与压缩 |
+| 03 | [提示词工程](03-prompt-engineering.md) | 从条件生成到任务契约、采样、证据核验与消融评估，穿插七项 Java 实践 |
+| 04 | [上下文工程](04-context-engineering.md) | 从 Chat Template、KV Cache 到提示注入、Skills、状态与压缩，穿插八个 Java 实践 |
 | 05 | [用户记忆与知识库](05-user-memory-knowledge-base.md) | 回到文档助手，研究跨会话信息、检索、来源与更新；长期记忆仍是后续实现 |
 
 第 02 篇已经能帮助读者看清工具循环，本轮保留正文和代码。第 03、04 篇另用天气场景：用户提出城市和日期问题，模型请求工具，Java 查询真实服务，再把来源、时间、单位和结果交回模型。读者可以直接判断案例中的生活问题，不必先理解订单接口的分页约定。
@@ -22,9 +22,7 @@
 | [first-agent](first-agent/README.md) | 原 HTTP、--guided、--context-lab 等入口 | 固定教学文档、手写循环与旧版文档上下文实验 |
 | [weather-agent](weather-agent/README.md) | --weather-check、--ask=... | 真实城市检索与天气查询，三种提示词、三种上下文策略、逐轮报告 |
 
-旧路径 03-context-engineering.md 和 04-user-memory-knowledge-base.md 保留导航说明，已有第 02 篇无需改动。原上下文文章保存在[文档案例历史版](archive/03-context-engineering-docs.md)，其验证数字不迁移到天气案例。
-
-调整前的详细学习安排和项目阅读入口保存在[历史学习路线](archive/learning-roadmap-before-prompt.md)，需要查原有材料时可继续使用；当前学习顺序以上表为准。
+旧路径 [03-context-engineering.md](03-context-engineering.md) 保留导航说明。上下文篇复用 first-agent 的消息、Skills 与压缩实验，并新增纯 JDK 的 [KV Cache 数值实验](context-labs/README.md)；各项目的验证结果分别说明，不迁移为其他案例的成绩。当前学习顺序以上表为准。
 
 ## 2、把每篇写成一个能够解释的问题
 
@@ -44,6 +42,8 @@
 先运行天气项目的 --weather-check，确认真实城市与天气接口能访问，再配置模型运行天气问题。完整命令见[项目说明](weather-agent/README.md)。
 
 提示词篇使用同一个问题、工具集合和上下文策略，对照 basic、rules、examples。观察地点缺失时是否追问、天气失败时是否说明缺口、建议是否与返回依据一致。三种模式共享事实与权限边界，改变的是处理流程和示例。
+
+提示词篇另有两个无需密钥的 [Java 小实验](prompt-labs/README.md)：用人工 logits 解释温度与 top-p，用合成观察解释字段核验。22 项自检验证计算与核验逻辑，不代表真实模型通过了质量评估。三种累计提示词模式属于方案对照，严格的单因素消融需另行控制变化范围。
 
 上下文篇固定提示词，对照 full、state、compact。逐轮检查消息，解释工具结果怎样进入下一次请求；再检查状态更新与完整批次压缩。短任务没有触发压缩是正常结果，不为了显示压缩效果诱导模型无意义地重复查天气。
 
