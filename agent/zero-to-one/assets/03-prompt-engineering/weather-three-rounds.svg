@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="1760" viewBox="0 0 1720 1760" role="img" aria-labelledby="title desc"><title id="title">一次天气查询如何形成三轮模型调用</title><desc id="desc">context=full、单城市可确定且两个工具均成功的正常路径。示意三轮模型调用与两次有先后依赖的 Java 工具执行。调用 ID 为占位，不代表运行日志。</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f6e98"/></marker></defs><style>text{font-family:'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',Arial,sans-serif;fill:#18334e} .mono{font-family:Consolas,'Microsoft YaHei',monospace} .secondary{fill:#526b83} .bold{font-weight:700}</style><rect width="1720" height="1760" fill="#f4f7fb"/>
+<text x="52" y="72" font-size="41" class="bold" text-anchor="start">一次天气查询：3 轮模型调用，2 次工具执行</text>
+<text x="54" y="117" font-size="24" class="secondary" text-anchor="start">单城市、地点可确定、工具成功的正常路径；context=full。示意，不是运行日志。</text>
+<rect x="52" y="148" width="1616" height="67" rx="15" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="78" y="191" font-size="25" class="mono" text-anchor="start">每轮独立提供相同工具配置：searchLocations(city) + getWeather(locationId)</text>
+<text x="78" y="259" font-size="26" class="bold" text-anchor="start">本轮输入 messages</text>
+<text x="748" y="259" font-size="26" class="bold" text-anchor="start">本轮 assistant 输出</text>
+<text x="1228" y="259" font-size="26" class="bold" text-anchor="start">Java 执行 / 最终候选回答</text>
+<rect x="52" y="284" width="630" height="339" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<rect x="76" y="306" width="162" height="37" rx="7" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="90" y="332" font-size="21" class="bold" text-anchor="start">第 1 轮 · 2 条</text>
+<rect x="76" y="364" width="582" height="80" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="397" font-size="23" class="mono bold" text-anchor="start">system</text>
+<text x="208" y="397" font-size="23" class="" text-anchor="start">选定版本的天气提示词</text>
+<text x="94" y="427" font-size="21" class="secondary" text-anchor="start">只依据本次实际工具结果报告天气数值。</text>
+<rect x="76" y="460" width="582" height="133" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="497" font-size="23" class="mono bold" text-anchor="start">user</text>
+<text x="94" y="534" font-size="23" class="" text-anchor="start">北京市明天的天气怎样？请说明降水概率，</text>
+<text x="94" y="568" font-size="23" class="" text-anchor="start">并给出带伞建议、目标日期和来源。</text>
+<rect x="728" y="284" width="430" height="339" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="752" y="331" font-size="27" class="bold" text-anchor="start">请求城市搜索</text>
+<text x="752" y="381" font-size="22" class="mono" text-anchor="start">tool_calls[0]</text>
+<text x="752" y="418" font-size="22" class="mono" text-anchor="start">id: call_city</text>
+<text x="752" y="455" font-size="22" class="mono" text-anchor="start">name: searchLocations</text>
+<text x="752" y="492" font-size="22" class="mono" text-anchor="start">arguments（解析后）：</text>
+<text x="752" y="529" font-size="22" class="mono" text-anchor="start">{&quot;city&quot;:&quot;北京&quot;}</text>
+<text x="752" y="587" font-size="21" class="secondary" text-anchor="start">call_city 为示意占位 ID。</text>
+<rect x="1204" y="284" width="464" height="339" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="1228" y="331" font-size="25" class="bold" text-anchor="start">校验并执行 searchLocations</text>
+<text x="1228" y="380" font-size="21" class="" text-anchor="start">名称 / 参数类型 / 调用 ID 预检</text>
+<text x="1228" y="419" font-size="21" class="" text-anchor="start">成功结果中的选定字段：</text>
+<text x="1228" y="458" font-size="21" class="" text-anchor="start">status: &quot;OK&quot;</text>
+<text x="1228" y="497" font-size="21" class="" text-anchor="start">locations[].id / name / timezone</text>
+<text x="1228" y="536" font-size="21" class="" text-anchor="start">source: &quot;Open-Meteo / GeoNames&quot;</text>
+<text x="1228" y="590" font-size="22" class="secondary" text-anchor="start">应用登记实际返回的候选地点。</text>
+<polyline points="682,452 723,452" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1158,452 1199,452" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1436,623 1436,660 367,660 367,700" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="620" y="650" font-size="23" class="secondary" text-anchor="start">把 assistant 请求 + 对应 tool 结果加入下一轮</text>
+<rect x="52" y="706" width="630" height="390" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<rect x="76" y="728" width="162" height="37" rx="7" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="90" y="754" font-size="21" class="bold" text-anchor="start">第 2 轮 · 4 条</text>
+<rect x="76" y="787" width="582" height="53" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="822" font-size="23" class="" text-anchor="start">system + user（与首轮相同）</text>
+<rect x="76" y="856" width="582" height="87" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="891" font-size="23" class="mono bold" text-anchor="start">assistant  ·  searchLocations</text>
+<text x="94" y="924" font-size="22" class="mono secondary" text-anchor="start">tool_calls[0].id = call_city</text>
+<rect x="76" y="959" width="582" height="107" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="992" font-size="23" class="bold" text-anchor="start">tool  ·  城市搜索结果</text>
+<text x="94" y="1026" font-size="22" class="mono secondary" text-anchor="start">tool_call_id = call_city</text>
+<text x="94" y="1055" font-size="21" class="" text-anchor="start">content 保留返回的地点 ID、地区与时区等。</text>
+<rect x="728" y="706" width="430" height="390" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="752" y="754" font-size="27" class="bold" text-anchor="start">请求天气查询</text>
+<text x="752" y="806" font-size="22" class="mono" text-anchor="start">tool_calls[0]</text>
+<text x="752" y="850" font-size="22" class="mono" text-anchor="start">id: call_weather</text>
+<text x="752" y="894" font-size="22" class="mono" text-anchor="start">name: getWeather</text>
+<text x="752" y="938" font-size="22" class="mono" text-anchor="start">arguments（解析后）：</text>
+<text x="752" y="982" font-size="22" class="mono" text-anchor="start">locationId = 本次实际 id</text>
+<text x="752" y="1060" font-size="21" class="secondary" text-anchor="start">locationId 是整数，不能凭空编造。</text>
+<rect x="1204" y="706" width="464" height="390" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="1228" y="754" font-size="25" class="bold" text-anchor="start">校验并执行 getWeather</text>
+<text x="1228" y="801" font-size="21" class="" text-anchor="start">预检后核验 ID 属于本任务候选</text>
+<text x="1228" y="839" font-size="21" class="" text-anchor="start">成功结果中的选定字段：</text>
+<text x="1228" y="877" font-size="21" class="" text-anchor="start">status: &quot;OK&quot;</text>
+<text x="1228" y="915" font-size="21" class="" text-anchor="start">current / current_units</text>
+<text x="1228" y="953" font-size="21" class="" text-anchor="start">daily / daily_units</text>
+<text x="1228" y="991" font-size="21" class="" text-anchor="start">timezone / source / retrievedAt</text>
+<text x="1228" y="1060" font-size="20" class="secondary" text-anchor="start">字段取自真实服务；此图不填天气数值。</text>
+<polyline points="682,901 723,901" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1158,901 1199,901" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1436,1096 1436,1134 367,1134 367,1174" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="620" y="1124" font-size="23" class="secondary" text-anchor="start">再加入天气请求 + 对应结果，保留先前完整消息对</text>
+<rect x="52" y="1180" width="630" height="350" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<rect x="76" y="1202" width="162" height="37" rx="7" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="90" y="1228" font-size="21" class="bold" text-anchor="start">第 3 轮 · 6 条</text>
+<rect x="76" y="1258" width="582" height="52" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="1292" font-size="23" class="" text-anchor="start">system + user（与首轮相同）</text>
+<rect x="76" y="1325" width="582" height="65" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="1365" font-size="23" class="mono" text-anchor="start">assistant + tool（call_city）</text>
+<rect x="76" y="1405" width="582" height="91" rx="15" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="94" y="1440" font-size="23" class="mono" text-anchor="start">assistant + tool（call_weather）</text>
+<text x="94" y="1475" font-size="22" class="secondary" text-anchor="start">tool_call_id 与对应请求 ID 一致。</text>
+<rect x="728" y="1180" width="430" height="350" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="752" y="1227" font-size="27" class="bold" text-anchor="start">产生候选回答</text>
+<text x="752" y="1282" font-size="22" class="" text-anchor="start">无 tool_calls 的非空 content</text>
+<text x="752" y="1329" font-size="22" class="" text-anchor="start">按目标日期选取 daily 数据</text>
+<text x="752" y="1376" font-size="22" class="" text-anchor="start">保留未知值与不确定性</text>
+<text x="752" y="1423" font-size="22" class="" text-anchor="start">注明天气来源与时区</text>
+<text x="752" y="1494" font-size="22" class="secondary" text-anchor="start">回答仍需核对事实与建议。</text>
+<rect x="1204" y="1180" width="464" height="350" rx="15" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="1228" y="1227" font-size="26" class="bold" text-anchor="start">本路径不再执行工具</text>
+<text x="1228" y="1284" font-size="24" class="" text-anchor="start">候选回答的组织：</text>
+<text x="1228" y="1326" font-size="24" class="" text-anchor="start">城市与目标日期</text>
+<text x="1228" y="1368" font-size="24" class="" text-anchor="start">查到的天气信息</text>
+<text x="1228" y="1410" font-size="24" class="" text-anchor="start">建议与不确定性</text>
+<text x="1228" y="1452" font-size="24" class="" text-anchor="start">来源与时区</text>
+<text x="1228" y="1500" font-size="20" class="secondary" text-anchor="start">COMPLETED 表示已产生候选回答。</text>
+<polyline points="682,1355 723,1355" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<polyline points="1158,1355 1199,1355" fill="none" stroke="#3f6e98" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="52" y="1567" width="1616" height="134" rx="15" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.7"/>
+<text x="78" y="1610" font-size="27" class="bold" text-anchor="start">依赖约束：先得到实际地点 ID，才能调用 getWeather；这两个工具不能并行执行。</text>
+<text x="78" y="1653" font-size="24" class="secondary" text-anchor="start">本图省略其他配置与完整工具字段。出现地点歧义、服务错误或预算限制时，轮数和路径可能变化。</text>
+</svg>
