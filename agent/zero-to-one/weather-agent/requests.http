@@ -1,0 +1,39 @@
+@baseUrl = http://127.0.0.1:8081
+
+### 在 IDEA 中启动 WeatherApplication 后发送；这会调用真实模型和天气工具
+POST {{baseUrl}}/api/weather/ask
+Content-Type: application/json
+
+{
+  "question": "北京市明天的天气怎样？请说明降水概率，并给出带伞建议、目标日期和来源。",
+  "promptMode": "rules",
+  "contextMode": "full"
+}
+
+### 省略模式时采用 rules / full；观察模型是否先追问城市
+POST {{baseUrl}}/api/weather/ask
+Content-Type: application/json
+
+{
+  "question": "明天出门需要带伞吗？"
+}
+
+### 保持问题和上下文模式不变，比较增加示例后的行为
+POST {{baseUrl}}/api/weather/ask
+Content-Type: application/json
+
+{
+  "question": "北京市明天的天气怎样？请说明降水概率，并给出带伞建议、目标日期和来源。",
+  "promptMode": "examples",
+  "contextMode": "full"
+}
+
+### 非法模式应返回 HTTP 400，不调用模型
+POST {{baseUrl}}/api/weather/ask
+Content-Type: application/json
+
+{
+  "question": "北京市明天的天气怎样？",
+  "promptMode": "unknown",
+  "contextMode": "full"
+}

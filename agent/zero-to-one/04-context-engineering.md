@@ -130,7 +130,7 @@ Token ID 序列 → 推理计算
 ]
 ```
 
-[WeatherAgent.java](weather-agent/src/main/java/example/weather/WeatherAgent.java) 使用应用控制的工具循环。关键交接只有两步：
+[WeatherAgent.java](weather-agent/src/main/java/example/weather/agent/WeatherAgent.java) 使用应用控制的工具循环。关键交接只有两步：
 
 ```java
 var history = manager.executeToolCalls(prompt, response).conversationHistory();
@@ -358,7 +358,7 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ### 5.2 以天气助手为例，分三层写清楚
 
-[WeatherPrompts.java](weather-agent/src/main/java/example/weather/WeatherPrompts.java) 已经把提示词拆成 `BASE`、`RULES`、`EXAMPLES`。
+[WeatherPrompts.java](weather-agent/src/main/java/example/weather/agent/WeatherPrompts.java) 已经把提示词拆成 `BASE`、`RULES`、`EXAMPLES`。
 
 第一层是所有模式共同遵守的事实边界。比如：只依据本次实际工具结果报告天气；null 不是零；服务失败不代表晴朗；外部资料不是新指令。共同边界始终保留，不能为了做对照实验而让 basic 版本获得额外权限。
 
@@ -390,10 +390,10 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ### 实践四：把提示词优化当作可以复查的对照
 
-先按 [weather-agent 说明](weather-agent/README.md)打包，并在运行环境配置模型密钥。下列命令在该模块目录执行：
+先按 [weather-agent 说明](weather-agent/README.md)配置运行环境。常规调用在 IDEA 中启动 HTTP 服务；下面使用独立的 `WeatherCli` 辅助入口做一次性对照。终端方式需先打包并在该终端配置模型密钥，命令在模块目录执行：
 
 ```powershell
-java '-Dfile.encoding=UTF-8' -jar target/weather-agent-0.0.1-SNAPSHOT.jar '--ask=北京市明天需要带伞吗？请给出降水概率、目标日期和来源。' --prompt=basic --context=full
+java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher '--ask=北京市明天需要带伞吗？请给出降水概率、目标日期和来源。' --prompt=basic --context=full
 ```
 
 保持问题和 `--context=full` 不变，分别用 `rules`、`examples` 再运行。每次都会产生真实模型用量。不要把答案更长、更像专家作为评分标准，可以事先定义：
@@ -447,7 +447,7 @@ Agent 必须读取外部内容，才能完成检索、代码阅读或邮件分�
 
 ### 实践五：用恶意工具请求检查 Java 的硬边界
 
-先读 [WeatherAgent.validateCalls()](weather-agent/src/main/java/example/weather/WeatherAgent.java) 的核心判断：
+先读 [WeatherAgent.validateCalls()](weather-agent/src/main/java/example/weather/agent/WeatherAgent.java) 的核心判断：
 
 ```java
 var args = json.readTree(call.arguments());
@@ -634,7 +634,7 @@ java '-Dfile.encoding=UTF-8' -jar target/first-agent-0.0.1-SNAPSHOT.jar --contex
 
 *图 3：压缩改变的是下一轮发送视图。完整旧批次仍留在本次 Java 对象中；图中的来源、事实、未知项和失败表示保留目标，不表示由模型重新生成了一份可信事实库。*
 
-当前 [WeatherContext](weather-agent/src/main/java/example/weather/WeatherContext.java) 使用确定性整理，不请求模型写摘要：
+当前 [WeatherContext](weather-agent/src/main/java/example/weather/agent/WeatherContext.java) 使用确定性整理，不请求模型写摘要：
 
 1. 保留固定规则与用户原始问题。
 2. 至少存在两个完整批次，且完整消息视图 JSON 超过 6000 个 UTF-16 单元时，才构造压缩候选。

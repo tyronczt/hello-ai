@@ -1,7 +1,9 @@
 spring:
   main:
     banner-mode: off
-    web-application-type: none
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   ai:
     openai:
       api-key: ${DEEPSEEK_API_KEY}
@@ -24,3 +26,11 @@ spring:
 logging:
   level:
     root: WARN
+    example.weather: INFO
+server:
+  address: ${WEATHER_BIND_ADDRESS:127.0.0.1}
+  port: ${WEATHER_PORT:8081}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never

@@ -1,6 +1,7 @@
-package example.weather;
+package example.weather.tool;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,16 +16,21 @@ import tools.jackson.databind.json.JsonMapper;
 final class OpenMeteoClient {
     /** 允许访问的服务域名，模型不能提供 URL。 */
     private static final Set<String> HOSTS = Set.of("geocoding-api.open-meteo.com", "api.open-meteo.com");
-    /** 仅在本次工具实例内复用连接。 */
+
+    /** 在本客户端内复用连接；连接超时为 5 秒，禁止自动跟随重定向。 */
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NEVER).build();
-    /** 沿用 Spring AI 工程已有的 Jackson 版本。 */
+
+    /** 使用工程已有的 Jackson 解析公开服务返回的 JSON。 */
     private final JsonMapper json = JsonMapper.builder().build();
 
     /**
      * 获取一个公开 JSON 响应，不把服务端错误正文写入返回或日志。
-     * @param uri 由应用构造的 HTTPS 地址
-     * @return 实际服务响应对象
+     * 单次请求超时为 15 秒，不自动重试；发生线程中断时恢复中断标记后报告失败。
+     *
+     * @param uri 由应用构造的非 null HTTPS 地址，使用允许的域名且不带用户信息或显式端口
+     * @return 实际服务返回的 JSON 对象，具体天气字段由工具层继续校验
+     * @throws Failure 地址不符合限制，HTTP 或网络请求失败，线程被中断，或响应无效
      */
     JsonNode get(URI uri) {
         if (!"https".equals(uri.getScheme()) || !HOSTS.contains(uri.getHost())
@@ -35,10 +41,16 @@ final class OpenMeteoClient {
                 .header("Accept", "application/json").GET().build();
         try {
             var response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            if (response.statusCode() == 429) throw new Failure("RATE_LIMITED");
-            if (response.statusCode() != 200) throw new Failure("PROVIDER_HTTP_ERROR");
+            if (response.statusCode() == 429) {
+                throw new Failure("RATE_LIMITED");
+            }
+            if (response.statusCode() != 200) {
+                throw new Failure("PROVIDER_HTTP_ERROR");
+            }
             // 响应接收完成后校验大小；这不是下载过程中的流式大小限制。
-            if (response.body().length() > 1_000_000) throw new Failure("INVALID_RESPONSE");
+            if (response.body().length() > 1_000_000) {
+                throw new Failure("INVALID_RESPONSE");
+            }
             JsonNode body = json.readTree(response.body());
             if (body == null || !body.isObject() || body.path("error").asBoolean(false)) {
                 throw new Failure("INVALID_RESPONSE");
@@ -56,13 +68,17 @@ final class OpenMeteoClient {
         }
     }
 
-    /** 只携带应用定义的错误码，不包含 URL、凭据或远端错误正文。 */
+    /** 将应用定义的错误码作为异常消息，不携带 URL、凭据或远端错误正文。 */
     static final class Failure extends RuntimeException {
         /** Java 异常序列化版本。 */
-        @java.io.Serial
+        @Serial
         private static final long serialVersionUID = 1L;
 
-        /** @param code 应用预定义的错误码 */
+        /**
+         * 创建供天气工具转换为失败结果的异常。
+         *
+         * @param code 调用方选择的应用预定义错误码，本构造器不校验取值
+         */
         Failure(String code) {
             super(code);
         }
