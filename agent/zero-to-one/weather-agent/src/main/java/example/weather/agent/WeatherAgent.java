@@ -9,6 +9,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -24,6 +27,9 @@ import tools.jackson.databind.json.JsonMapper;
  * 每次 run 独立维护工具、消息与计数；模型提出动作，应用执行后将结果交回下一轮。
  */
 public final class WeatherAgent {
+    /** 记录轮次、预算、阶段和结果摘要，不记录提示词、模型正文或原始工具参数。 */
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherAgent.class);
+
     /** 包含最终回答在内的模型调用上限。 */
     public static final int MAX_MODEL_CALLS = 8;
 
@@ -91,12 +97,22 @@ public final class WeatherAgent {
         Set<String> seenCalls = new HashSet<>();
         int toolCalls = 0;
         long started = System.nanoTime();
+        int activeRound = 0;
+        String phase = "agent_start";
+        String stopReason = "MODEL_CALL_LIMIT";
+        long phaseStarted = started;
+        LOG.info("Agent 开始：stage=agent_start, promptMode={}, contextMode={}, maxModelCalls={}, maxToolCalls={}",
+                promptMode, contextMode, MAX_MODEL_CALLS, MAX_TOOL_CALLS);
         try {
             for (int round = 1; round <= MAX_MODEL_CALLS; round++) {
+                activeRound = round;
                 if (expired(started)) {
+                    stopReason = "TASK_TIMEOUT_BEFORE_MODEL";
                     report.put("answer", "任务超出五分钟预算。");
                     break;
                 }
+                phase = "model_prepare";
+                phaseStarted = System.nanoTime();
                 WeatherContext.validatePairs(prompt.getInstructions());
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("round", round);
@@ -104,23 +120,40 @@ public final class WeatherAgent {
                 row.put("messageJsonUtf16Units", WeatherContext.jsonChars(prompt.getInstructions()));
                 row.put("compacted", context.compacted());
                 rounds.add(row);
+                LOG.info("模型调用开始：stage=model_call, round={}, messages={}, messageJsonUtf16Units={},"
+                                + " compacted={}, remainingModelCalls={}, remainingToolCalls={}",
+                        round, prompt.getInstructions().size(), row.get("messageJsonUtf16Units"),
+                        context.compacted(), MAX_MODEL_CALLS - round + 1, MAX_TOOL_CALLS - toolCalls);
+                phase = "model_call";
                 long before = System.nanoTime();
+                phaseStarted = before;
                 var response = model.call(prompt);
                 row.put("elapsedMs", (System.nanoTime() - before) / 1_000_000);
+                LOG.info("模型调用返回：stage=model_return, round={}, elapsedMs={}", round, row.get("elapsedMs"));
                 if (expired(started)) {
+                    stopReason = "TASK_TIMEOUT_AFTER_MODEL";
                     report.put("answer", "模型返回时已超出任务预算。");
                     break;
                 }
+                phase = "model_response";
+                phaseStarted = System.nanoTime();
                 if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
+                    stopReason = "INVALID_MODEL_RESPONSE";
                     report.put("answer", "模型没有返回有效结果。");
                     break;
                 }
                 var output = response.getResult().getOutput();
                 recordResponse(row, response);
+                LOG.info("模型响应摘要：stage=model_response, round={}, toolCallCount={}, answerUtf16Units={}",
+                        round, response.hasToolCalls() ? output.getToolCalls().size() : 0,
+                        output.getText() == null ? 0 : output.getText().length());
+                LOG.debug("模型原生用量：stage=model_usage, round={}, usage={}", round, row.get("usage"));
                 if (!response.hasToolCalls()) {
                     if (output.getText() == null || output.getText().isBlank()) {
+                        stopReason = "EMPTY_ANSWER";
                         report.put("answer", "模型返回空答案。");
                     } else {
+                        stopReason = "CANDIDATE_READY";
                         report.put("status", "COMPLETED");
                         report.put("answer", output.getText());
                     }
@@ -128,15 +161,31 @@ public final class WeatherAgent {
                 }
                 var calls = output.getToolCalls();
                 if (round == MAX_MODEL_CALLS || calls.size() > MAX_TOOL_CALLS - toolCalls) {
+                    stopReason = "INSUFFICIENT_TOOL_BATCH_BUDGET";
                     report.put("answer", "剩余预算不足以执行完整工具批次并读取结果。");
                     break;
                 }
+                phase = "tool_precheck";
+                phaseStarted = System.nanoTime();
                 validateCalls(calls, seenCalls);
+                LOG.info("工具批次预检通过：stage=tool_precheck, round={}, batchSize={}, tools={}",
+                        round, calls.size(), calls.stream().map(AssistantMessage.ToolCall::name).toList());
                 toolCalls += calls.size();
+                phase = "tool_execute";
+                phaseStarted = System.nanoTime();
+                LOG.info("工具批次开始：stage=tool_batch_start, round={}, requestedToolCalls={}", round, toolCalls);
                 var history = manager.executeToolCalls(prompt, response).conversationHistory();
+                LOG.info("工具批次结束：stage=tool_batch_end, round={}, elapsedMs={}",
+                        round, (System.nanoTime() - phaseStarted) / 1_000_000);
+                phase = "context_rebuild";
+                phaseStarted = System.nanoTime();
                 prompt = new Prompt(context.afterTools(history, round, toolCalls), options);
             }
         } catch (RuntimeException ex) {
+            stopReason = "EXECUTION_FAILURE";
+            LOG.error("Agent 执行异常：stage=agent_failed, phase={}, round={}, exceptionType={}, phaseElapsedMs={}",
+                    phase, activeRound, ex.getClass().getName(), (System.nanoTime() - phaseStarted) / 1_000_000);
+            LOG.debug("Agent 异常代码位置：stage=agent_failure_frames, frames={}", Arrays.toString(ex.getStackTrace()));
             report.put("answer", "模型、工具或协议处理失败；请检查报告中的 errorType 和工具结果。");
             report.put("errorType", ex.getClass().getSimpleName());
         }
@@ -144,6 +193,9 @@ public final class WeatherAgent {
         report.put("requestedToolCalls", toolCalls);
         report.put("elapsedMs", (System.nanoTime() - started) / 1_000_000);
         report.put("completionMeaning", "候选回答已产生；COMPLETED 不证明天气事实或建议已自动核验。");
+        LOG.atLevel("COMPLETED".equals(report.get("status")) ? Level.INFO : Level.WARN).log(
+                "Agent 结束：stage=agent_end, status={}, reason={}, modelCalls={}, requestedToolCalls={}, elapsedMs={}",
+                report.get("status"), stopReason, rounds.size(), toolCalls, report.get("elapsedMs"));
         return report;
     }
 

@@ -102,6 +102,31 @@ $response | Format-List taskId, status, answer
 
 正常天气查询中，模型调用、工具执行与消息回填会交替出现；追问或停止时不一定进入所有工具断点。具体顺序以本次模型响应和报告为准。
 
+Run/Debug 控制台默认以 `INFO` 显示本项目的执行阶段，每行包含 `requestId`。这个编号由服务为每次 HTTP 请求生成，从参数校验前一直传递到同步响应结束；在控制台搜索同一个 `requestId`，可以跟踪本次请求。`report_saved` 和 `task_end` 日志同时包含响应中的 `taskId`，可据此打开本次报告。请求在进入业务处理前被拒绝时，只有 `requestId`，没有任务报告或 `taskId`。
+
+| 日志中的 `stage` | 对应代码与观察内容 |
+|---|---|
+| `http_request`、`controller_input` | 请求开始、字段校验通过；记录问题的 UTF-16 长度及已校验模式 |
+| `task_start`、`agent_start` | 进入 Service 和 Agent，确认模式及模型、工具调用上限 |
+| `model_call`、`model_return`、`model_response` | 当前轮次、消息数量与 JSON 长度、剩余预算、模型耗时、工具请求数及候选文本长度 |
+| `tool_precheck`、`tool_batch_start`、`tool_batch_end` | 整批预检通过后记录工具名称、批次大小、累计计数及执行耗时；预检失败不会执行该批次 |
+| `tool_start`、`tool_end` | 实际工具开始和结束；城市名只记录长度，地点 ID 为数字；结果记录 `OK` 或 `ERROR`、错误码及耗时 |
+| `provider_start`、`provider_end` | 实际访问 Open-Meteo 的固定域名、HTTP 状态或失败类型、耗时；工具参数被拒绝时不会进入网络请求 |
+| `context_ready` | 工具结果已配对并回填，记录上下文模式、已完成批次、下一轮消息数及实际压缩标记 |
+| `agent_end` | 候选产生或停止；包含 `status`、固定原因码 `reason`、实际调用计数和 Agent 耗时 |
+| `task_report`、`report_saved`、`task_end`、`dto_to_vo`、`http_response` | 保存报告、生成响应摘要并结束请求；可关联 `taskId`、报告相对路径和 HTTP 状态 |
+| `http_rejected`、`agent_failed`、`report_failed`、`http_failed` | 校验、协议、模型、工具或报告保存失败；Agent 异常还记录 `phase`、轮次及阶段耗时 |
+
+出现 `model_call` 后还没有 `model_return`，表示这次模型调用尚未返回；出现 `provider_start` 后还没有 `provider_end`，表示天气 HTTP 请求尚未结束。先按 `requestId` 排除其他并发请求，再结合超时配置与异常记录定位。`agent_end` 中的 `EMPTY_ANSWER` 表示模型返回空文本，`INSUFFICIENT_TOOL_BATCH_BUDGET` 表示预算不足以执行整批工具并读取结果，`EXECUTION_FAILURE` 则结合前一条 `agent_failed` 的阶段和异常类型检查。`http_response` 中的 HTTP 200 仍需结合任务 `status` 判断。
+
+需要查看 Query → DTO 转换、模型原生用量、上下文压缩长度比较或异常代码位置时，在同一 IDEA 运行配置的 **Program arguments** 中临时添加以下参数，再重新启动：
+
+```text
+--logging.level.example.weather=DEBUG
+```
+
+`DEBUG` 仍只输出摘要；异常代码位置只输出栈帧，不输出异常消息或原因正文。问题、提示词、模型答案、原始工具参数和结果请在本地 `report.json` 中查看。日志不打印请求头、模型密钥、完整 URL 查询参数或远端响应正文。消息 JSON 长度以 UTF-16 编码单元计，不是 Token；没有模型原生用量时，`model_usage` 的 `usage` 为 `null`。CLI 不经过 HTTP 请求过滤器，日志中的 `requestId` 为 `none`。
+
 切换请求中的模式不需要重启。修改 Java 源码后，先停止当前 Run/Debug，保存并重新构建项目，再以同一配置启动、发送新请求。检查新报告中的实际消息，确认修改已经生效。
 
 ## 每次请求如何隔离
@@ -202,6 +227,8 @@ if ($LASTEXITCODE -ne 0) { Write-Warning '任务未完成；有本次报告路�
 这些命令执行后退出，不启动 HTTP 服务。直接使用 `java -jar target/weather-agent-0.0.1-SNAPSHOT.jar` 则启动 HTTP 服务，辅助参数不会切换到 `WeatherCli`。
 
 ## 已验证的范围
+
+2026-10-26 在 JDK 21 下验证本次日志改动：Maven 离线 `compile`、`package` 通过，均跳过 Maven 测试执行；独立检查通过 41 项核心断言、153 项 HTTP 断言，以及 30 项日志断言。日志检查覆盖完整工具循环的请求编号传递、并发隔离、正常和异常退出时的 MDC 清理、上下文压缩记录，以及带换行的敏感问题、答案、工具参数和异常消息不进入 `DEBUG` 日志。日志检查程序放在 `.local-checks/WeatherLoggingChecks.java`，结果在 `target/checks/logging/summary.json`；这些检查均未访问线上模型或真实天气服务。
 
 2026-10-25 在 JDK 21 下完成本次验证：
 

@@ -6,6 +6,8 @@ import example.weather.service.WeatherService;
 import example.weather.web.query.WeatherAskQuery;
 import example.weather.web.vo.WeatherAskVO;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/weather")
 public class WeatherController {
+    /** 记录已校验请求的模式、长度及摘要转换，不输出问题和答案正文。 */
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherController.class);
+
     /** 执行天气任务并保存本地报告的服务，不在控制器中直接调用模型或天气接口。 */
     private final WeatherService weatherService;
 
@@ -41,8 +46,12 @@ public class WeatherController {
     @PostMapping(path = "/ask", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public WeatherAskVO ask(@Valid @RequestBody WeatherAskQuery query) {
+        LOG.info("请求校验通过：stage=controller_input, questionUtf16Units={}, promptMode={}, contextMode={}",
+                query.getQuestion().length(), query.getPromptMode(), query.getContextMode());
         WeatherAskDTO input = new WeatherAskDTO(query.getQuestion(), query.getPromptMode(), query.getContextMode());
+        LOG.debug("请求对象转换完成：stage=query_to_dto");
         WeatherResultDTO result = weatherService.process(input);
+        LOG.info("响应摘要转换完成：stage=dto_to_vo, taskId={}, status={}", result.getTaskId(), result.getStatus());
         return new WeatherAskVO(result.getTaskId(), result.getStatus(), result.getAnswer());
     }
 }

@@ -6,12 +6,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 /** 保存本次公开教学任务的详细报告；目录由服务生成，不接受客户端指定存储路径。 */
 @Component
 public class WeatherReportStore {
+    /** 记录报告保存阶段及模块内相对路径，不输出报告正文或本机绝对路径。 */
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherReportStore.class);
+
     /** 报告 JSON 编码器，不写入模型客户端的 Header 或密钥配置。 */
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -27,14 +32,20 @@ public class WeatherReportStore {
      * @throws UncheckedIOException 目录创建或报告文件写入失败，不返回伪造的成功任务
      */
     public String save(Map<String, Object> report) {
+        long started = System.nanoTime();
+        LOG.debug("开始保存报告：stage=report_save");
         try {
             Files.createDirectories(root);
             Path directory = Files.createTempDirectory(root, "run-");
             Path output = directory.resolve("report.json");
             Files.writeString(output, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(report),
                     StandardCharsets.UTF_8);
+            LOG.info("报告保存完成：stage=report_saved, taskId={}, report=target/weather-runs/{}/report.json, elapsedMs={}",
+                    directory.getFileName(), directory.getFileName(), (System.nanoTime() - started) / 1_000_000);
             return directory.getFileName().toString();
         } catch (IOException ex) {
+            LOG.error("报告保存失败：stage=report_failed, exceptionType={}, elapsedMs={}",
+                    ex.getClass().getName(), (System.nanoTime() - started) / 1_000_000);
             throw new UncheckedIOException("天气任务报告保存失败。", ex);
         }
     }

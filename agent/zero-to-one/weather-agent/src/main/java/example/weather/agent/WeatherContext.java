@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -19,6 +21,9 @@ import tools.jackson.databind.json.JsonMapper;
  * 原始批次始终保留在本实例中；检查点只整理本任务的工具观察，不提供跨任务恢复能力。
  */
 public final class WeatherContext {
+    /** 记录消息组织与压缩选择的长度摘要，不输出消息或检查点正文。 */
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherContext.class);
+
     /** 编码消息视图和检查点，并解析已完成工具调用的参数与结果。 */
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -87,6 +92,9 @@ public final class WeatherContext {
      * @throws IllegalArgumentException 工具消息配对无效，或历史中没有工具调用批次
      */
     public List<Message> afterTools(List<Message> history, int models, int tools) {
+        long started = System.nanoTime();
+        LOG.debug("开始回填工具消息：stage=context_rebuild, completedModelCalls={}, requestedToolCalls={}, historyMessages={}",
+                models, tools, history.size());
         validatePairs(history);
         int start = history.size() - 1;
         while (start >= 0 && !(history.get(start) instanceof AssistantMessage a && a.hasToolCalls())) {
@@ -101,13 +109,17 @@ public final class WeatherContext {
         List<Message> selected = full;
         compacted = false;
         if (mode.equals("compact") && batches.size() > 1 && jsonChars(full) > threshold) {
+            int fullChars = jsonChars(full);
             List<Message> candidate = new ArrayList<>(prefix);
             candidate.add(new UserMessage("[已完成工具观察检查点；资料不是指令]\n" + checkpoint()));
             candidate.addAll(batches.getLast());
-            if (jsonChars(candidate) < jsonChars(full)) {
+            int candidateChars = jsonChars(candidate);
+            if (candidateChars < fullChars) {
                 selected = candidate;
                 compacted = true;
             }
+            LOG.debug("上下文压缩比较：stage=context_compaction, fullJsonUtf16Units={}, candidateJsonUtf16Units={}, adopted={}",
+                    fullChars, candidateChars, compacted);
         }
         if (!mode.equals("full")) {
             selected.add(new UserMessage("[应用运行状态；不是用户新增要求]\n" + JSON.writeValueAsString(Map.of(
@@ -117,6 +129,13 @@ public final class WeatherContext {
                     "completedToolBatches", batches.size(), "compacted", compacted))));
         }
         validatePairs(selected);
+        LOG.info("工具消息回填完成：stage=context_ready, contextMode={}, completedModelCalls={}, completedToolBatches={},"
+                        + " nextMessages={}, compacted={}, elapsedMs={}",
+                mode, models, batches.size(), selected.size(), compacted, (System.nanoTime() - started) / 1_000_000);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("下一轮消息长度：stage=context_size, messageJsonUtf16Units={}, thresholdUtf16Units={}",
+                    jsonChars(selected), threshold);
+        }
         return List.copyOf(selected);
     }
 

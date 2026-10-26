@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import tools.jackson.databind.JsonNode;
@@ -23,6 +26,9 @@ import tools.jackson.databind.json.JsonMapper;
  * 地点 ID 必须来自本任务的搜索结果；工具失败返回错误 JSON，不以模拟天气兜底。
  */
 public final class WeatherTools {
+    /** 记录固定工具名、参数摘要、结果码与耗时，原始输入和公开结果仍只写入教学报告。 */
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherTools.class);
+
     /** 应用构造 URL 后使用的 JSON 读取函数；包内构造器用于协议检查。 */
     private final Function<URI, JsonNode> fetch;
 
@@ -61,9 +67,11 @@ public final class WeatherTools {
             + "同名地点需结合用户提供的地区判断；无法确定时追问，不默认取第一项。")
     public synchronized String searchLocations(
             @ToolParam(description = "城市名称，例如北京；有同名歧义时补充用户给出的地区") String city) {
+        long started = System.nanoTime();
+        LOG.info("工具开始：stage=tool_start, tool=searchLocations, cityUtf16Units={}", city == null ? 0 : city.length());
         if (city == null || city.strip().length() < 2 || city.length() > 80) {
             return record("searchLocations", Map.of("city", city == null ? "" : city),
-                    error("INVALID_ARGUMENT", "城市名称需要 2～80 个字符。"));
+                    error("INVALID_ARGUMENT", "城市名称需要 2～80 个字符。"), started);
         }
         Map<String, Object> args = Map.of("city", city.strip());
         URI uri = URI.create("https://geocoding-api.open-meteo.com/v1/search?name="
@@ -72,16 +80,16 @@ public final class WeatherTools {
             JsonNode body = fetch.apply(uri);
             List<Map<String, Object>> results = parseLocations(body);
             if (results.isEmpty()) {
-                return record("searchLocations", args, error("NOT_FOUND", "没有找到城市候选。"));
+                return record("searchLocations", args, error("NOT_FOUND", "没有找到城市候选。"), started);
             }
             // 全部候选校验完成才登记，避免部分无效响应污染本次可用地点。
             for (var location : results) {
                 locations.put((Long) location.get("id"), location);
             }
             return record("searchLocations", args, Map.of("status", "OK", "source", "Open-Meteo / GeoNames",
-                    "sourceUrl", uri.toString(), "retrievedAt", Instant.now().toString(), "locations", results));
+                    "sourceUrl", uri.toString(), "retrievedAt", Instant.now().toString(), "locations", results), started);
         } catch (OpenMeteoClient.Failure ex) {
-            return record("searchLocations", args, error(ex.getMessage(), "城市服务未返回可用结果；请稍后重试或补充地点。"));
+            return record("searchLocations", args, error(ex.getMessage(), "城市服务未返回可用结果；请稍后重试或补充地点。"), started);
         }
     }
 
@@ -97,10 +105,12 @@ public final class WeatherTools {
             + "daily 是预报，超出返回日期范围的信息未知。不能把现在的天气当作明天的预报。")
     public synchronized String getWeather(
             @ToolParam(description = "从本次城市搜索结果选出的精确 ID，不是经纬度或行政区划编码") long locationId) {
+        long started = System.nanoTime();
+        LOG.info("工具开始：stage=tool_start, tool=getWeather, locationId={}", locationId);
         Map<String, Object> args = Map.of("locationId", locationId);
         var location = locations.get(locationId);
         if (location == null) {
-            return record("getWeather", args, error("UNKNOWN_LOCATION", "先搜索城市，再使用实际返回的 ID。"));
+            return record("getWeather", args, error("UNKNOWN_LOCATION", "先搜索城市，再使用实际返回的 ID。"), started);
         }
         URI uri = URI.create("https://api.open-meteo.com/v1/forecast?latitude=" + location.get("latitude")
                 + "&longitude=" + location.get("longitude")
@@ -110,9 +120,9 @@ public final class WeatherTools {
         try {
             JsonNode body = fetch.apply(uri);
             validateWeather(body);
-            return record("getWeather", args, createWeatherResult(body, location, uri));
+            return record("getWeather", args, createWeatherResult(body, location, uri), started);
         } catch (OpenMeteoClient.Failure ex) {
-            return record("getWeather", args, error(ex.getMessage(), "天气服务未返回可用结果，不能据此生成天气数值。"));
+            return record("getWeather", args, error(ex.getMessage(), "天气服务未返回可用结果，不能据此生成天气数值。"), started);
         }
     }
 
@@ -295,11 +305,16 @@ public final class WeatherTools {
      * @param tool 已开放的工具名称
      * @param args 本次请求参数，包括被工具拒绝的参数
      * @param result 成功结果或明确的错误结果
+     * @param started 当前工具开始执行时的单调时钟读数，单位纳秒
      * @return 提供给工具调用框架的 JSON 文本
      */
-    private String record(String tool, Map<String, Object> args, Map<String, Object> result) {
+    private String record(String tool, Map<String, Object> args, Map<String, Object> result, long started) {
         String encoded = json.writeValueAsString(result);
         events.add(Map.of("tool", tool, "arguments", args, "result", result));
+        LOG.atLevel("OK".equals(result.get("status")) ? Level.INFO : Level.WARN).log(
+                "工具结束：stage=tool_end, tool={}, status={}, code={}, registeredLocations={}, elapsedMs={}",
+                tool, result.get("status"), result.getOrDefault("code", "NONE"), locations.size(),
+                (System.nanoTime() - started) / 1_000_000);
         return encoded;
     }
 }

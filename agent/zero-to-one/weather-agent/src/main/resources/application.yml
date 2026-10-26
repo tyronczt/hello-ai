@@ -24,6 +24,8 @@ spring:
     retry:
       max-attempts: 1
 logging:
+  pattern:
+    level: "%5p [requestId=%X{requestId:-none}]"
   level:
     root: WARN
     example.weather: INFO

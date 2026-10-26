@@ -16,7 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 /** 统一天气应用的 HTTP 错误结构，保留协议状态及响应头，避免将异常消息或输入内容回显给调用方。 */
 @RestControllerAdvice
 public class WeatherExceptionHandler extends ResponseEntityExceptionHandler {
-    /** 仅记录未预期异常的类型，不记录请求正文、异常消息或堆栈。 */
+    /** 记录 HTTP 拒绝和失败的状态及异常类型，不记录请求正文、异常消息或堆栈。 */
     private static final Logger LOGGER = LoggerFactory.getLogger(WeatherExceptionHandler.class);
 
     /**
@@ -35,6 +35,8 @@ public class WeatherExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode statusCode, WebRequest request) {
         HttpHeaders responseHeaders = HttpHeaders.copyOf(headers);
         responseHeaders.setContentType(MediaType.APPLICATION_JSON);
+        LOGGER.warn("HTTP 请求被拒绝：stage=http_rejected, httpStatus={}, exceptionType={}",
+                statusCode.value(), exception.getClass().getName());
         return super.handleExceptionInternal(exception, errorFor(statusCode), responseHeaders, statusCode, request);
     }
 
@@ -46,7 +48,8 @@ public class WeatherExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<WeatherErrorVO> handleUnexpectedException(Exception exception) {
-        LOGGER.error("Weather HTTP request failed; exceptionType={}", exception.getClass().getName());
+        LOGGER.error("天气 HTTP 处理失败：stage=http_failed, httpStatus=500, exceptionType={}",
+                exception.getClass().getName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(errorFor(HttpStatus.INTERNAL_SERVER_ERROR));
