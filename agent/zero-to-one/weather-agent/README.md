@@ -1,6 +1,6 @@
 # weather-agent：通过 HTTP 提问的真实天气助手
 
-本项目对应[第 03 篇提示词工程](../03-prompt-engineering.md)与[第 04 篇上下文工程](../04-context-engineering.md)。城市和天气来自真实 Open-Meteo；模型提出工具请求，Java 执行并把实际结果交回模型。使用方式与 `first-agent` 一致：在 IDEA 启动服务，再通过 HTTP 提交天气问题。启动普通服务时不会自动向模型提问。
+本项目对应[第 03 篇提示词工程](../03-prompt-engineering.md)与[第 04 篇上下文工程](../04-context-engineering.md)。城市与预报通过高德 Web 服务查询；模型提出工具请求，Java 执行并把实际结果交回模型。使用方式与 `first-agent` 一致：在 IDEA 启动服务，再通过 HTTP 提交天气问题。启动普通服务时不会自动向模型提问。
 
 `WeatherApplication` 只负责启动 Spring 服务；HTTP 请求通过 Controller 进入业务服务，再由 Agent 组织模型与工具循环。辅助命令使用独立的 `WeatherCli` 主类。每次请求独立运行，详细报告留在本地。
 
@@ -8,7 +8,7 @@
 
 沿用本系列已有技术组合：JDK 21、Spring Boot 4.1.1、Spring AI 2.0.1，使用 Maven 构建。这是项目锁定版本，不是最新版本推荐。天气 HTTP 使用 JDK `HttpClient`，没有新增天气 SDK。
 
-Open-Meteo 的非商业免费接口无需注册或 API Key，有调用限制且不提供免费接口的可用性保证；商业用途需另核对服务方案。数据署名保留 Open-Meteo，地名来源保留 GeoNames。[服务条件](https://open-meteo.com/en/pricing) · [数据许可](https://open-meteo.com/en/licence)
+高德的[行政区域查询](https://lbs.amap.com/api/webservice/guide/api/district)与[天气查询](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)需要 Web 服务类型的 Key。本项目通过 Java 系统属性 `amap.api.key` 读取它，不从环境变量回退读取。工具只取得预报；当前接口不提供降水概率，适配层将该字段保留为 `null`。
 
 模型服务沿用 DeepSeek OpenAI 兼容配置，通过 `DEEPSEEK_API_KEY` 设置密钥；可通过 `DEEPSEEK_BASE_URL` 和 `DEEPSEEK_MODEL` 显式调整模型服务。当前默认模型名沿用现有项目的 `deepseek-flash`，其他服务与模型没有验证。
 
@@ -24,7 +24,7 @@ Open-Meteo 的非商业免费接口无需注册或 API Key，有调用限制且�
 | [service/WeatherReportStore.java](src/main/java/example/weather/service/WeatherReportStore.java) | 生成任务目录，将报告写入本地 |
 | [agent/WeatherAgent.java](src/main/java/example/weather/agent/WeatherAgent.java) | 组织模型与工具循环，约束执行预算 |
 | [agent/WeatherPrompts.java](src/main/java/example/weather/agent/WeatherPrompts.java)、[WeatherContext.java](src/main/java/example/weather/agent/WeatherContext.java) | 选择规则文本，组织每轮消息 |
-| [tool/WeatherTools.java](src/main/java/example/weather/tool/WeatherTools.java)、[OpenMeteoClient.java](src/main/java/example/weather/tool/OpenMeteoClient.java) | 校验工具参数，查询真实地点和天气 |
+| [tool/WeatherTools.java](src/main/java/example/weather/tool/WeatherTools.java)、[AmapClient.java](src/main/java/example/weather/tool/AmapClient.java) | 校验工具参数，查询真实地点和天气 |
 | [cli/WeatherCli.java](src/main/java/example/weather/cli/WeatherCli.java) | 运行天气接口检查或单次模型任务 |
 
 ## 在 IDEA 启动服务
@@ -32,12 +32,13 @@ Open-Meteo 的非商业免费接口无需注册或 API Key，有调用限制且�
 在 IntelliJ IDEA 中打开本模块 [pom.xml](pom.xml)，作为 Maven 项目导入并等待依赖加载。选择 JDK 21，创建主类为 `example.weather.WeatherApplication` 的运行配置：
 
 1. **Working directory** 设为本模块目录 `hello-ai/agent/zero-to-one/weather-agent`，报告按这个工作目录保存。
-2. 在 **Environment variables** 中设置 `DEEPSEEK_API_KEY`。
-3. **Program arguments 留空**，点击 Run 或 Debug；服务启动后持续监听 `127.0.0.1:8081`，等待用户提交问题。
+2. 在 **Environment variables** 中设置模型密钥 `DEEPSEEK_API_KEY`。
+3. 在 **VM options** 中填写 `-Damap.api.key=你的Key`，将占位文本替换为自己的高德 Web 服务 Key。它是 JVM 参数，不能放在 Program arguments。
+4. **Program arguments 留空**，点击 Run 或 Debug；服务启动后持续监听 `127.0.0.1:8081`，等待用户提交问题。
 
-不要勾选 **Store as project file / Share through VCS**；运行配置可能以明文保存密钥。IDEA Terminal 中设置的环境变量不会自动传给工具栏的 Run 配置。`WEATHER_PORT`、`WEATHER_BIND_ADDRESS` 可覆盖端口与绑定地址，调用地址也应相应调整。本示例没有登录、权限隔离、限流或用量配额，开放给其他设备前需补充相应访问控制。
+不要勾选 **Store as project file / Share through VCS**；运行配置可能以明文保存密钥。真实 Key 不应发到对话、模型或报告，也不要提交到版本库。IDEA Terminal 中设置的环境变量不会自动传给工具栏的 Run 配置。`WEATHER_PORT`、`WEATHER_BIND_ADDRESS` 可覆盖端口与绑定地址，调用地址也应相应调整。本示例没有登录、权限隔离、限流或用量配额，开放给其他设备前需补充相应访问控制。
 
-启动阶段不执行天气任务，不主动调用模型或 Open-Meteo。Run 控制台确认服务启动后，再发送下面的请求。
+启动阶段不执行天气任务，不主动调用模型或高德。Run 控制台确认服务启动后，再发送下面的请求。
 
 ## 用户提交天气问题
 
@@ -88,7 +89,7 @@ $response | Format-List taskId, status, answer
 
 请求体缺失、JSON 错误或字段不合法返回 HTTP 400；不支持的方法返回 405；非 `application/json` 请求返回 415。此类请求在进入业务处理前被拒绝，没有本次任务摘要。未预期的处理异常返回 500。错误响应使用 `code`、`message` 两个字段。
 
-调用会产生真实模型用量，并按模型选择请求 Open-Meteo。报告保存本次问题、逐轮消息和公开工具返回，跟做时使用公开教学问题即可。HTTP 响应不返回报告正文或本机绝对路径。
+调用会产生真实模型用量，并按模型选择请求高德。报告保存本次问题、逐轮消息和公开工具返回，跟做时使用公开教学问题即可。HTTP 响应不返回报告正文或本机绝对路径。
 
 ## 在 IDEA 中跟踪执行
 
@@ -111,7 +112,7 @@ Run/Debug 控制台默认以 `INFO` 显示本项目的执行阶段，每行包�
 | `model_call`、`model_return`、`model_response` | 当前轮次、消息数量与 JSON 长度、剩余预算、模型耗时、工具请求数及候选文本长度 |
 | `tool_precheck`、`tool_batch_start`、`tool_batch_end` | 整批预检通过后记录工具名称、批次大小、累计计数及执行耗时；预检失败不会执行该批次 |
 | `tool_start`、`tool_end` | 实际工具开始和结束；城市名只记录长度，地点 ID 为数字；结果记录 `OK` 或 `ERROR`、错误码及耗时 |
-| `provider_start`、`provider_end` | 实际访问 Open-Meteo 的固定域名、HTTP 状态或失败类型、耗时；工具参数被拒绝时不会进入网络请求 |
+| `provider_start`、`provider_end` | 实际访问高德的固定域名、HTTP 状态或失败类型、耗时；工具参数被拒绝时不会进入网络请求 |
 | `context_ready` | 工具结果已配对并回填，记录上下文模式、已完成批次、下一轮消息数及实际压缩标记 |
 | `agent_end` | 候选产生或停止；包含 `status`、固定原因码 `reason`、实际调用计数和 Agent 耗时 |
 | `task_report`、`report_saved`、`task_end`、`dto_to_vo`、`http_response` | 保存报告、生成响应摘要并结束请求；可关联 `taskId`、报告相对路径和 HTTP 状态 |
@@ -125,7 +126,7 @@ Run/Debug 控制台默认以 `INFO` 显示本项目的执行阶段，每行包�
 --logging.level.example.weather=DEBUG
 ```
 
-`DEBUG` 仍只输出摘要；异常代码位置只输出栈帧，不输出异常消息或原因正文。问题、提示词、模型答案、原始工具参数和结果请在本地 `report.json` 中查看。日志不打印请求头、模型密钥、完整 URL 查询参数或远端响应正文。消息 JSON 长度以 UTF-16 编码单元计，不是 Token；没有模型原生用量时，`model_usage` 的 `usage` 为 `null`。CLI 不经过 HTTP 请求过滤器，日志中的 `requestId` 为 `none`。
+`DEBUG` 仍只输出摘要；异常代码位置只输出栈帧，不输出异常消息或原因正文。问题、提示词、模型答案、原始工具参数和结果请在本地 `report.json` 中查看。日志不打印请求头、模型或高德密钥、完整 URL 查询参数或远端响应正文。消息 JSON 长度以 UTF-16 编码单元计，不是 Token；没有模型原生用量时，`model_usage` 的 `usage` 为 `null`。CLI 不经过 HTTP 请求过滤器，日志中的 `requestId` 为 `none`。
 
 切换请求中的模式不需要重启。修改 Java 源码后，先停止当前 Run/Debug，保存并重新构建项目，再以同一配置启动、发送新请求。检查新报告中的实际消息，确认修改已经生效。
 
@@ -177,23 +178,45 @@ $report.toolEvents | ConvertTo-Json -Depth 20
 
 ## 工具与执行边界
 
-`searchLocations(city)` 返回最多五个候选，包含实际 ID、行政区、国家、坐标与时区。`getWeather(locationId)` 只接受本次已经检索到的 ID，返回当前条件与包含今天的三天预报。缺失地点需要追问，超出返回日期范围的预报不能编造。
+`searchLocations(city)` 接收城市名称字符串，检索中国省、市或区县候选，不支持国家或街道级查询。统一结果中的 `locations[]` 包含 `id`、`name`、`level`、`adcode`、`country`、`country_code`、`timezone`；不返回坐标。`id` 是 `long` 类型的行政区编码，如北京为 `110000`，仍须使用本次搜索返回的实际值。
 
-当前条件来自气象模型数据，不等同于现场测量。温度、概率、有效时间与单位均保留服务返回；`retrievedAt` 只表示本次获取时间。null 保持未知，数组错位按无效响应处理。完整字段解释见 [Open-Meteo 文档](https://open-meteo.com/en/docs)。
+`getWeather(locationId)` 只接受本次已经登记的 ID，用 `extensions=all` 获取服务实际返回的预报日期，不查询实况，也不将返回天数固定为三天。缺失地点需要追问，超出返回日期范围的预报不能编造。
 
-每项任务最多 8 次模型调用、12 个工具请求；同一批次先整体校验，最后一轮不再执行无法回填给模型的工具。天气连接超时为 5 秒，请求超时为 15 秒，不自动重试；模型请求超时配置为 45 秒。五分钟任务预算在阶段之间检查，不能中断已经阻塞的外部请求。
+以下是 `WeatherTools` 整理后的工具字段，不是高德原始 JSON：
+
+| 字段 | 本项目含义 |
+|---|---|
+| `source`、`sourceUrl` | 来源为高德地图；来源 URL 不包含 Key |
+| `location` | 本次已登记的行政区信息 |
+| `timezone`、`localTime` | 适配层使用 `Asia/Shanghai`；`localTime` 是应用查询时钟对应的当地时间，带时区偏移 |
+| `reportTime`、`retrievedAt` | 高德预报发布时间、本次获取时刻；不能代替预报日期 |
+| `daily[].date` | 每条预报对应的日期；先按 `localTime` 理解相对日期，再匹配此字段 |
+| `daily[].dayWeather`、`nightWeather` | 保留高德返回的白天、夜间天气文字 |
+| `daily[].dayTemperature`、`nightTemperature` | 白天、夜间温度，不能改称日最高、最低温度 |
+| `daily[].precipitationProbability` | 当前接口不提供该指标，固定保留为 `null`，不从湿度或天气文字推算 |
+| `units` | 适配层约定温度为 `°C`、概率为 `%`；概率单位不表示已有概率值 |
+
+天气文字的含义见[高德天气现象表](https://lbs.amap.com/api/webservice/guide/tools/weather-code/)；它列出“晴”“多云”等文字，不是旧版 WMO 数值映射。适配层保留原文，不自造数值编码，也不从文字推算降水概率。
+
+原始服务字段可查阅[高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)，转换规则见 [WeatherTools.java](src/main/java/example/weather/tool/WeatherTools.java)，HTTP 请求与服务状态校验见 [AmapClient.java](src/main/java/example/weather/tool/AmapClient.java)。回答需要保留未知值，并区分预报、查询时刻与服务发布时间。
+
+每项任务最多 8 次模型调用、12 个工具请求；同一批次先整体校验，最后一轮不再执行无法回填给模型的工具。天气连接超时为 20 秒，请求超时为 30 秒，不自动重试；模型请求超时配置为 45 秒。五分钟任务预算在阶段之间检查，不能中断已经阻塞的外部请求。
+
+如果工具结果为 `MISSING_API_KEY`，先检查当前 Run 配置的 VM options 是否设置了 `-Damap.api.key=...`，而不是 Program arguments 或环境变量；`AUTH_ERROR` 表示高德拒绝了 Key，应核对所用 Web 服务 Key。
+
+如果回答说明天气服务不可用，先查看报告中对应工具的 `result`。`PROVIDER_UNAVAILABLE` 表示网络请求发生 I/O 异常；IDEA 控制台会记录固定服务域名、异常类型和耗时，例如 `HttpConnectTimeoutException`。它不等同于天气供应商已确认停机。`COMPLETED` 仍只表示产生了非空候选，候选可能是在说明本次未取得天气信息。修改超时源码后，停止并重新启动 IDEA 中的服务，再重新发送请求。
 
 ## 可选：命令行辅助入口
 
-辅助命令使用独立主类 `example.weather.cli.WeatherCli`。在 IDEA 新建这份运行配置，选择 JDK 21，工作目录仍为本模块，再按需要设置 Program arguments：
+辅助命令使用独立主类 `example.weather.cli.WeatherCli`。在 IDEA 新建这份运行配置，选择 JDK 21，工作目录仍为本模块。查询天气时，在 **VM options** 中同样配置 `-Damap.api.key=你的Key`；Program arguments 只放下面的任务参数：
 
 | Program arguments | 行为 |
 |---|---|
 | 留空或 `--help` | 打印用法，不启动 HTTP 服务或调用外部接口 |
-| `--weather-check` | 查询真实 Open-Meteo，不调用模型，不需要模型密钥 |
+| `--weather-check` | 查询高德行政区和预报，需要高德 Key，不调用模型、不需要模型密钥 |
 | `--ask=天气问题 --prompt=rules --context=full` | 执行一次真实模型任务，需要在这份 Run 配置中设置 `DEEPSEEK_API_KEY` |
 
-`--weather-check` 先搜索北京，再使用已经核验的北京候选 ID `1816670` 检查天气接口。普通 Agent 入口根据用户要求选择候选，不默认使用这个固定 ID。检查报告中的 `kind` 为 `LIVE_WEATHER_TOOL_CHECK`；它没有模型调用，不能用于验证提示词效果。
+`--weather-check` 先搜索北京，仅在本次结果中有唯一名称为“北京”或“北京市”的候选时，才使用该候选的实际 ID 检查预报接口。它不硬编码地点 ID；普通 Agent 入口仍由模型结合用户要求选择候选。检查报告中的 `kind` 为 `LIVE_WEATHER_TOOL_CHECK`；它没有模型调用，不能用于验证提示词效果。
 
 CLI 的 `--prompt`、`--context` 与 HTTP 的 `promptMode`、`contextMode` 对应，支持相同取值和默认值。任务结束后打印状态与报告路径；任务停止时先保存报告，再以非零状态结束。需要恢复 HTTP 服务时，选择 `WeatherApplication` 的无参数运行配置；清空 `WeatherCli` 的实参只会打印帮助。
 
@@ -210,17 +233,17 @@ if ($LASTEXITCODE -ne 0) { throw '打包失败。' }
 java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher --help
 ```
 
-检查真实天气接口：
+检查真实天气接口时，先将 `你的Key` 替换为自己的高德 Web 服务 Key。JVM 参数位于 `-cp` 前：
 
 ```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher --weather-check
+java '-Damap.api.key=你的Key' '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher --weather-check
 if ($LASTEXITCODE -ne 0) { throw '天气接口检查失败，请查看生成的报告。' }
 ```
 
-单次模型任务需先在这个终端的环境中配置好 `DEEPSEEK_API_KEY`，再执行：
+单次模型任务需先在这个终端的环境中配置好 `DEEPSEEK_API_KEY`，并同样通过 JVM 参数提供高德 Key，再执行：
 
 ```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher '--ask=北京市明天的天气怎样？请说明降水概率，并给出带伞建议、目标日期和来源。' --prompt=rules --context=full
+java '-Damap.api.key=你的Key' '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher '--ask=北京市明天的天气怎样？请说明降水概率，并给出带伞建议、目标日期和来源。' --prompt=rules --context=full
 if ($LASTEXITCODE -ne 0) { Write-Warning '任务未完成；有本次报告路径就先读报告，没有则检查启动错误。' }
 ```
 
@@ -228,9 +251,13 @@ if ($LASTEXITCODE -ne 0) { Write-Warning '任务未完成；有本次报告路�
 
 ## 已验证的范围
 
-2026-10-26 在 JDK 21 下验证本次日志改动：Maven 离线 `compile`、`package` 通过，均跳过 Maven 测试执行；独立检查通过 41 项核心断言、153 项 HTTP 断言，以及 30 项日志断言。日志检查覆盖完整工具循环的请求编号传递、并发隔离、正常和异常退出时的 MDC 清理、上下文压缩记录，以及带换行的敏感问题、答案、工具参数和异常消息不进入 `DEBUG` 日志。日志检查程序放在 `.local-checks/WeatherLoggingChecks.java`，结果在 `target/checks/logging/summary.json`；这些检查均未访问线上模型或真实天气服务。
+高德迁移的线上边界：用户提供的真实预报响应返回 `status=1`、`infocode=10000`，包含北京市的四天日夜预报，没有降水概率。本机未配置真实高德 Key，因此没有通过完整 Agent 验证线上高德查询；无 Key 的连通性请求只得到鉴权拒绝，不能作为查询成功记录。
 
-2026-10-25 在 JDK 21 下完成本次验证：
+2026-10-26 高德迁移后，Maven 离线 `package` 通过（包含主代码编译，跳过 Maven 测试执行）。独立本机检查通过 43 项核心断言、153 项 HTTP 断言、48 项高德字段适配断言、423 项客户端与密钥隔离断言、30 项日志断言；另运行 `EvidenceCheckLab`，12 个合成案例通过。检查使用本机模型或内存天气替身，不调用线上模型或高德天气。以下记录保留切换前的验证范围。
+
+2026-10-26 在 JDK 21 下验证切换高德前的日志改动：Maven 离线 `compile`、`package` 通过，均跳过 Maven 测试执行；独立检查通过 41 项核心断言、153 项 HTTP 断言，以及 30 项日志断言。日志检查覆盖完整工具循环的请求编号传递、并发隔离、正常和异常退出时的 MDC 清理、上下文压缩记录，以及带换行的敏感问题、答案、工具参数和异常消息不进入 `DEBUG` 日志。日志检查程序放在 `.local-checks/WeatherLoggingChecks.java`，结果在 `target/checks/logging/summary.json`；这些检查均未访问线上模型或真实天气服务。
+
+2026-10-25 在 JDK 21 下完成 HTTP 入口验证：
 
 - Maven 离线编译与打包通过，分别执行 `compile`、`package` 并跳过测试执行。
 - 真实 Spring MVC 入口配合本机模型替身通过 153 项断言，覆盖 6 次任务、20 次非法请求拒绝及 5 类传输对象的 Java 序列化往返。检查包括无参数启动不调用模型、两种任务状态、默认模式与非法字段、HTTP 400/405/415、独立任务报告，以及响应不暴露报告路径或密钥。
@@ -239,4 +266,4 @@ if ($LASTEXITCODE -ne 0) { Write-Warning '任务未完成；有本次报告路�
 
 检查使用本机模型和天气替身，没有访问线上模型或真实天气服务；这些结果验证接口、消息与执行边界，不代表线上模型回答质量。检查程序是按项目惯例放在 `.local-checks/` 的独立 Java 程序，不是 Maven 自动发现的 JUnit 测试。HTTP 检查结果在 `target/checks/http/summary.json`，对应模型请求在 `target/checks/http/model-requests.json`；核心检查结果在 `target/checks/summary.json`，本机协议请求在 `target/checks/wire-requests.json`。
 
-另保留一项历史记录：2026-10-19 的 `--weather-check` 曾成功访问真实 Open-Meteo 城市和天气接口，本次未重跑。真实模型回答质量、不同网络环境的稳定性、模型 Token 节省和服务端缓存命中尚未验证。
+另保留一项历史记录：2026-10-19 的旧版 `--weather-check` 曾成功访问真实 Open-Meteo 城市和天气接口；它不代表高德接入成功。本轮排障复现了旧服务连接超时，随后迁移到高德。真实模型回答质量、不同网络环境的稳定性、模型 Token 节省和服务端缓存命中尚未验证。

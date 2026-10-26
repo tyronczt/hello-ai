@@ -1,6 +1,6 @@
 @baseUrl = http://127.0.0.1:8081
 
-### 在 IDEA 中启动 WeatherApplication 后发送；这会调用真实模型和天气工具
+### IDEA 配置 VM options：-Damap.api.key=你的Key，再启动 WeatherApplication；请求会调用真实模型和高德工具
 POST {{baseUrl}}/api/weather/ask
 Content-Type: application/json
 

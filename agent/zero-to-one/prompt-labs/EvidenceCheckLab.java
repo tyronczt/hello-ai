@@ -35,18 +35,18 @@ public class EvidenceCheckLab {
 
     public static void main(String[] args) {
         LocalDate target = LocalDate.of(2026, 10, 22);
-        Facts unknown = new Facts(1816670, target, "Asia/Shanghai", "Open-Meteo", null);
+        Facts unknown = new Facts(110000, target, "Asia/Shanghai", "高德地图", null);
         check("未知仍为未知", unknown, new Candidate(Outcome.ANSWER, unknown), target, List.of());
         check("未知被填成零", unknown, new Candidate(Outcome.ANSWER,
-                new Facts(1816670, target, "Asia/Shanghai", "Open-Meteo", 0)), target, List.of("PROBABILITY"));
+                new Facts(110000, target, "Asia/Shanghai", "高德地图", 0)), target, List.of("PROBABILITY"));
         check("回答日期错位", unknown, new Candidate(Outcome.ANSWER,
-                new Facts(1816670, target.plusDays(1), "Asia/Shanghai", "Open-Meteo", null)), target, List.of("DATE"));
+                new Facts(110000, target.plusDays(1), "Asia/Shanghai", "高德地图", null)), target, List.of("DATE"));
         check("回答地点错位", unknown, new Candidate(Outcome.ANSWER,
-                new Facts(1796236, target, "Asia/Shanghai", "Open-Meteo", null)), target, List.of("LOCATION"));
+                new Facts(310000, target, "Asia/Shanghai", "高德地图", null)), target, List.of("LOCATION"));
         check("遗漏来源", unknown, new Candidate(Outcome.ANSWER,
-                new Facts(1816670, target, "Asia/Shanghai", null, null)), target, List.of("SOURCE"));
+                new Facts(110000, target, "Asia/Shanghai", null, null)), target, List.of("SOURCE"));
         check("时区错位", unknown, new Candidate(Outcome.ANSWER,
-                new Facts(1816670, target, "UTC", "Open-Meteo", null)), target, List.of("TIMEZONE"));
+                new Facts(110000, target, "UTC", "高德地图", null)), target, List.of("TIMEZONE"));
         check("服务失败如实说明", null, new Candidate(Outcome.UNAVAILABLE, null), target, List.of());
         check("服务失败仍给预报", null, new Candidate(Outcome.ANSWER, unknown), target, List.of("NO_EVIDENCE"));
         check("证据不含目标日期", unknown, new Candidate(Outcome.ANSWER, unknown),
@@ -55,7 +55,7 @@ public class EvidenceCheckLab {
                 target, List.of("MISSING_ANSWER"));
         check("ANSWER 没有事实", unknown, new Candidate(Outcome.ANSWER, null), target, List.of("MISSING_FACTS"));
         try {
-            new Facts(1816670, target, "Asia/Shanghai", "Open-Meteo", 101);
+            new Facts(110000, target, "Asia/Shanghai", "高德地图", 101);
             throw new AssertionError("应拒绝越界概率");
         } catch (IllegalArgumentException expected) {
             System.out.println("PASS: 越界概率被拒绝");
@@ -97,7 +97,7 @@ public class EvidenceCheckLab {
 
     private static void check(String label, Facts observed, Candidate candidate,
                               LocalDate target, List<String> expected) {
-        List<String> actual = verify(1816670, target, observed, candidate);
+        List<String> actual = verify(110000, target, observed, candidate);
         if (!actual.equals(expected)) throw new AssertionError(label + ": " + actual);
         System.out.println("PASS: " + label + " -> " + actual);
     }

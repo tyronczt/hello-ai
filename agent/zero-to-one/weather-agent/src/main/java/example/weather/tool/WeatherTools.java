@@ -1,17 +1,24 @@
 package example.weather.tool;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,51 +29,76 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 每项任务独立的天气工具，负责城市检索、地点登记和预报结果校验。
- * 地点 ID 必须来自本任务的搜索结果；工具失败返回错误 JSON，不以模拟天气兜底。
+ * 每项任务独立的高德天气工具，负责行政区搜索、地点登记和预报结果校验。
+ * 地点 ID 必须来自本任务的搜索结果；不查询实况，也不以模拟天气填补缺失数据。
  */
 public final class WeatherTools {
-    /** 记录固定工具名、参数摘要、结果码与耗时，原始输入和公开结果仍只写入教学报告。 */
+    /** 记录固定工具名、参数摘要、结果码与耗时，不记录 Key 或原始远端响应。 */
     private static final Logger LOG = LoggerFactory.getLogger(WeatherTools.class);
 
-    /** 应用构造 URL 后使用的 JSON 读取函数；包内构造器用于协议检查。 */
+    /** 本适配层为中国行政区和预报明确采用的业务时区。 */
+    private static final ZoneId TIMEZONE = ZoneId.of("Asia/Shanghai");
+
+    /** 本示例支持登记的行政区级别，不登记国家、街道及其他级别。 */
+    private static final Set<String> LEVELS = Set.of("province", "city", "district");
+
+    /** 高德预报发布时间的格式，按真实日历严格校验。 */
+    private static final DateTimeFormatter REPORT_TIME_FORMAT = DateTimeFormatter
+            .ofPattern("uuuu-MM-dd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
+
+    /** 接收无 Key 地址的 JSON 读取函数；正式客户端在内部追加凭据。 */
     private final Function<URI, JsonNode> fetch;
 
-    /** 本次任务检索到的候选地点，不跨任务共享。 */
+    /** 记录应用获取时间与中国当地查询时间，不依赖服务器默认时区。 */
+    private final Clock clock;
+
+    /** 本次任务检索到的候选地点，ID 为六位行政区划编码的 long 值，不跨任务共享。 */
     private final Map<Long, Map<String, Object>> locations = new LinkedHashMap<>();
 
-    /** 工具实际输入与结果的教学记录，无请求 Header。 */
+    /** 工具实际输入和规范化结果的教学记录，不含请求 Header 或 Key。 */
     private final List<Map<String, Object>> events = new ArrayList<>();
 
     /** 工具返回使用 JSON 编码，不以字符串拼接外部内容。 */
     private final JsonMapper json = JsonMapper.builder().build();
 
-    /** 创建访问 Open-Meteo 真实接口的工具实例。 */
+    /** 创建访问高德真实接口的工具实例；构造阶段不发送请求。 */
     public WeatherTools() {
-        this(new OpenMeteoClient()::get);
+        this(new AmapClient()::get);
     }
 
     /**
-     * 注入 JSON 读取函数，供包内协议检查使用；正式入口使用真实 Open-Meteo 客户端。
+     * 注入 JSON 读取函数，供包内协议检查使用；正式入口使用高德客户端。
      *
-     * @param fetch 接收应用构造的 URI 并返回 JSON 对象的非空函数
+     * @param fetch 接收应用构造的无 Key URI 并返回 JSON 对象的非空函数
      * @throws NullPointerException 读取函数为空
      */
     WeatherTools(Function<URI, JsonNode> fetch) {
-        this.fetch = Objects.requireNonNull(fetch);
+        this(fetch, Clock.systemUTC());
     }
 
     /**
-     * 搜索城市候选，保留行政区、国家与时区供模型判断同名地点。
-     * 只有全部候选校验通过后才登记地点；参数错误、无候选或服务失败均记录为错误结果。
+     * 注入读取函数和查询时钟，供包内协议及跨时区日期检查使用。
      *
-     * @param city 城市名称，可含行政区限定；去除首尾空白后至少 2 个、原文最多 80 个 UTF-16 单元
-     * @return 状态为 OK 的候选 JSON，或状态为 ERROR 的错误 JSON；不自动选中第一项
+     * @param fetch 接收应用构造的无 Key URI 并返回 JSON 对象的非空函数
+     * @param clock 提供应用查询时刻的非空时钟，输出当地时间固定使用 Asia/Shanghai
+     * @throws NullPointerException 读取函数或时钟为空
      */
-    @Tool(description = "通过 Open-Meteo 搜索城市，返回候选 ID、国家、行政区、坐标和时区。"
-            + "同名地点需结合用户提供的地区判断；无法确定时追问，不默认取第一项。")
+    WeatherTools(Function<URI, JsonNode> fetch, Clock clock) {
+        this.fetch = Objects.requireNonNull(fetch);
+        this.clock = Objects.requireNonNull(clock);
+    }
+
+    /**
+     * 搜索中国省、市或区县候选，保留行政区名称和级别供模型判断同名地点。
+     * 全部支持级别的候选校验通过后才登记；不自动选中第一项，不返回坐标。
+     *
+     * @param city 城市或行政区名称；去除首尾空白后至少 2 个、原文最多 80 个 UTF-16 单元
+     * @return 状态为 OK 的候选 JSON，或状态为 ERROR 的错误 JSON
+     */
+    @Tool(description = "通过高德搜索中国省、市或区县，返回候选 ID、六位行政区划编码、名称、级别和时区。"
+            + "不支持国家或街道级查询。同名地点需结合用户提供的地区判断；无法确定时追问，不默认取第一项。")
     public synchronized String searchLocations(
-            @ToolParam(description = "城市名称，例如北京；有同名歧义时补充用户给出的地区") String city) {
+            @ToolParam(description = "城市或行政区名称，例如北京；有同名歧义时补充用户给出的地区") String city) {
         long started = System.nanoTime();
         LOG.info("工具开始：stage=tool_start, tool=searchLocations, cityUtf16Units={}", city == null ? 0 : city.length());
         if (city == null || city.strip().length() < 2 || city.length() > 80) {
@@ -74,37 +106,43 @@ public final class WeatherTools {
                     error("INVALID_ARGUMENT", "城市名称需要 2～80 个字符。"), started);
         }
         Map<String, Object> args = Map.of("city", city.strip());
-        URI uri = URI.create("https://geocoding-api.open-meteo.com/v1/search?name="
-                + URLEncoder.encode(city.strip(), StandardCharsets.UTF_8) + "&count=5&language=zh&format=json");
+        URI uri = URI.create("https://restapi.amap.com/v3/config/district?keywords="
+                + URLEncoder.encode(city.strip(), StandardCharsets.UTF_8)
+                + "&subdistrict=0&page=1&offset=5&extensions=base&output=JSON");
         try {
             JsonNode body = fetch.apply(uri);
+            AmapClient.validateResponse(body);
             List<Map<String, Object>> results = parseLocations(body);
             if (results.isEmpty()) {
-                return record("searchLocations", args, error("NOT_FOUND", "没有找到城市候选。"), started);
+                return record("searchLocations", args, error("NOT_FOUND", "没有找到支持的省、市或区县候选。"), started);
             }
-            // 全部候选校验完成才登记，避免部分无效响应污染本次可用地点。
+            // 全部候选校验后再登记，防止部分无效响应污染本次可用地点。
             for (var location : results) {
                 locations.put((Long) location.get("id"), location);
             }
-            return record("searchLocations", args, Map.of("status", "OK", "source", "Open-Meteo / GeoNames",
-                    "sourceUrl", uri.toString(), "retrievedAt", Instant.now().toString(), "locations", results), started);
-        } catch (OpenMeteoClient.Failure ex) {
-            return record("searchLocations", args, error(ex.getMessage(), "城市服务未返回可用结果；请稍后重试或补充地点。"), started);
+            return record("searchLocations", args, Map.of("status", "OK", "source", "高德地图",
+                    "sourceUrl", uri.toString(), "retrievedAt", clock.instant().toString(),
+                    "locations", results), started);
+        } catch (AmapClient.Failure ex) {
+            return record("searchLocations", args,
+                    error(ex.getMessage(), failureMessage(ex, "城市服务未返回可用结果；请检查配置或补充地点。")), started);
         }
     }
 
     /**
-     * 读取已检索地点的当前条件与三天预报；日期与单位来自实际服务响应。
-     * ID 未登记时不访问天气接口；响应结构无效或服务失败时记录错误结果。
+     * 读取本任务已登记行政区的完整预报，返回多少个有效日期就保留多少天。
+     * 只查询预报，不查询实况；白天与夜间温度不解释为最高与最低温度。
      *
-     * @param locationId 本次 searchLocations 返回的地点 ID
-     * @return 状态为 OK 的天气 JSON，或状态为 ERROR 的错误 JSON；null 保持未知，不补为零
+     * @param locationId 本次 searchLocations 返回的精确地点 ID，即六位 adcode 的 long 值
+     * @return 状态为 OK 的天气 JSON，或状态为 ERROR 的错误 JSON；缺失温度和降水概率保持 null
      */
-    @Tool(description = "查询本次 searchLocations 已返回的地点 ID，取得当前天气条件及包含今天的三天预报。"
-            + "返回当地时间、单位、来源和获取时间。current 基于气象模型数据，并非现场测量；"
-            + "daily 是预报，超出返回日期范围的信息未知。不能把现在的天气当作明天的预报。")
+    @Tool(description = "查询本次 searchLocations 已返回的地点 ID，取得高德天气预报，不查询实况。"
+            + "返回各日期的白天和夜间天气、温度、应用查询当地时间、预报发布时间、单位和来源。"
+            + "白天和夜间温度不是最高和最低温度；服务未提供降水概率，该值为 null，不能编造。"
+            + "超出实际返回日期范围的信息未知。")
     public synchronized String getWeather(
-            @ToolParam(description = "从本次城市搜索结果选出的精确 ID，不是经纬度或行政区划编码") long locationId) {
+            @ToolParam(description = "本次城市搜索实际返回的精确 ID；虽与六位 adcode 相同，也不能绕过搜索自行填写")
+            long locationId) {
         long started = System.nanoTime();
         LOG.info("工具开始：stage=tool_start, tool=getWeather, locationId={}", locationId);
         Map<String, Object> args = Map.of("locationId", locationId);
@@ -112,17 +150,17 @@ public final class WeatherTools {
         if (location == null) {
             return record("getWeather", args, error("UNKNOWN_LOCATION", "先搜索城市，再使用实际返回的 ID。"), started);
         }
-        URI uri = URI.create("https://api.open-meteo.com/v1/forecast?latitude=" + location.get("latitude")
-                + "&longitude=" + location.get("longitude")
-                + "&current=temperature_2m,weather_code"
-                + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
-                + "&timezone=auto&forecast_days=3");
+        URI uri = URI.create("https://restapi.amap.com/v3/weather/weatherInfo?city=" + location.get("adcode")
+                + "&extensions=all&output=JSON");
         try {
             JsonNode body = fetch.apply(uri);
-            validateWeather(body);
-            return record("getWeather", args, createWeatherResult(body, location, uri), started);
-        } catch (OpenMeteoClient.Failure ex) {
-            return record("getWeather", args, error(ex.getMessage(), "天气服务未返回可用结果，不能据此生成天气数值。"), started);
+            AmapClient.validateResponse(body);
+            JsonNode forecast = findForecast(body, (String) location.get("adcode"));
+            List<Map<String, Object>> daily = parseDaily(forecast);
+            return record("getWeather", args, createWeatherResult(forecast, daily, location, uri), started);
+        } catch (AmapClient.Failure ex) {
+            return record("getWeather", args,
+                    error(ex.getMessage(), failureMessage(ex, "天气服务未返回可用结果，不能据此生成天气数值。")), started);
         }
     }
 
@@ -136,156 +174,205 @@ public final class WeatherTools {
     }
 
     /**
-     * 解析并校验城市候选，不在校验过程中修改本任务的地点登记表。
+     * 解析行政区候选，不在校验过程中修改地点登记表，不保留服务返回的坐标。
      *
-     * @param body 城市接口返回的 JSON 对象
-     * @return 按服务返回顺序排列的候选；results 缺失或为空时返回空列表
-     * @throws OpenMeteoClient.Failure 候选结构、ID、名称或经纬度不符合要求
+     * @param body 已通过业务状态校验的行政区响应
+     * @return 按服务顺序排列的支持级别候选；无候选或仅含不支持级别时返回空列表
+     * @throws AmapClient.Failure 候选结构、名称、编码格式或编码唯一性不符合要求
      */
     private List<Map<String, Object>> parseLocations(JsonNode body) {
-        List<Map<String, Object>> results = new ArrayList<>();
-        JsonNode candidates = body.path("results");
-        if (!candidates.isMissingNode() && !candidates.isArray()) {
-            throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+        JsonNode candidates = body.path("districts");
+        if (!candidates.isArray()) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
+        List<Map<String, Object>> results = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
         for (JsonNode item : candidates) {
-            long id = item.path("id").asLong(-1);
-            double lat = item.path("latitude").asDouble(Double.NaN);
-            double lon = item.path("longitude").asDouble(Double.NaN);
-            if (id <= 0 || !Double.isFinite(lat) || !Double.isFinite(lon)
-                    || Math.abs(lat) > 90 || Math.abs(lon) > 180 || !item.path("name").isString()) {
-                throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+            if (!item.isObject() || !item.path("level").isString()) {
+                throw new AmapClient.Failure("INVALID_RESPONSE");
+            }
+            String level = item.path("level").asString();
+            if (!LEVELS.contains(level)) {
+                continue;
+            }
+            String adcode = requiredText(item, "adcode");
+            if (!adcode.matches("[1-9][0-9]{5}") || !seen.add(adcode)) {
+                throw new AmapClient.Failure("INVALID_RESPONSE");
             }
             Map<String, Object> location = new LinkedHashMap<>();
-            location.put("id", id);
-            for (String field : List.of("name", "admin1", "admin2", "country", "country_code", "timezone")) {
-                location.put(field, item.path(field).asString(""));
-            }
-            location.put("latitude", lat);
-            location.put("longitude", lon);
+            location.put("id", Long.parseLong(adcode));
+            location.put("adcode", adcode);
+            location.put("name", requiredText(item, "name"));
+            location.put("level", level);
+            location.put("country", "中国");
+            location.put("country_code", "CN");
+            location.put("timezone", TIMEZONE.getId());
             results.add(location);
         }
         return results;
     }
 
     /**
-     * 校验天气结果的时间格式、数值类型、单位及逐日数组长度，保留数值 null。
-     * 本方法检查响应结构，不核验气象数据准确性或模型最终回答。
+     * 找到与本次已登记行政区编码唯一匹配的预报，拒绝错配和重复匹配。
      *
-     * @param body 天气接口返回的 JSON 对象
-     * @throws OpenMeteoClient.Failure 必要字段、时间格式、单位或数组对齐不符合要求
+     * @param body 已通过业务状态校验的天气响应
+     * @param adcode 本任务登记的六位行政区划编码
+     * @return 编码匹配且发布时间格式有效的预报对象
+     * @throws AmapClient.Failure 预报数组、编码匹配或发布时间不符合要求
      */
-    private void validateWeather(JsonNode body) {
-        JsonNode times = body.path("daily").path("time");
-        if (!times.isArray() || times.isEmpty() || !body.path("current").isObject()
-                || !body.path("timezone").isString() || !body.path("daily_units").isObject()
-                || !body.path("current_units").isObject()) {
-            throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+    private JsonNode findForecast(JsonNode body, String adcode) {
+        JsonNode forecasts = body.path("forecasts");
+        if (!forecasts.isArray()) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
-        if (!body.path("current").path("time").isString()) {
-            throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+        JsonNode selected = null;
+        for (JsonNode forecast : forecasts) {
+            if (!forecast.isObject()) {
+                throw new AmapClient.Failure("INVALID_RESPONSE");
+            }
+            if (forecast.path("adcode").isString() && adcode.equals(forecast.path("adcode").asString())) {
+                if (selected != null) {
+                    throw new AmapClient.Failure("INVALID_RESPONSE");
+                }
+                selected = forecast;
+            }
+        }
+        if (selected == null) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
         try {
-            LocalDateTime.parse(body.path("current").path("time").asString());
+            LocalDateTime.parse(requiredText(selected, "reporttime"), REPORT_TIME_FORMAT);
         } catch (DateTimeException ex) {
-            throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
-        for (String field : List.of("temperature_2m", "weather_code")) {
-            JsonNode value = body.path("current").path(field);
-            if ((!value.isNull() && !value.isNumber()) || !body.path("current_units").path(field).isString()) {
-                throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
-            }
+        return selected;
+    }
+
+    /**
+     * 逐日校验并转换预报，保留服务完整日期范围，拒绝重复或无效日期。
+     *
+     * @param forecast 与登记地点匹配且发布时间有效的预报对象
+     * @return 有效的逐日结果；空温度字符串为 null，未提供的降水概率固定为 null
+     * @throws AmapClient.Failure 逐日数组、日期、天气描述或温度不符合要求
+     */
+    private List<Map<String, Object>> parseDaily(JsonNode forecast) {
+        JsonNode casts = forecast.path("casts");
+        if (!casts.isArray() || casts.isEmpty()) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
-        for (String field : List.of("weather_code", "temperature_2m_max", "temperature_2m_min",
-                "precipitation_probability_max")) {
-            JsonNode values = body.path("daily").path(field);
-            if (!values.isArray() || values.size() != times.size()
-                    || !body.path("daily_units").path(field).isString()) {
-                throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
-            }
-            for (JsonNode value : values) {
-                if (!value.isNull() && !value.isNumber()) {
-                    throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
-                }
-            }
-        }
-        for (JsonNode time : times) {
-            if (!time.isString()) {
-                throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
-            }
+        List<Map<String, Object>> daily = new ArrayList<>();
+        Set<LocalDate> dates = new HashSet<>();
+        for (JsonNode cast : casts) {
+            String date = requiredText(cast, "date");
             try {
-                LocalDate.parse(time.asString());
+                LocalDate parsed = LocalDate.parse(date);
+                if (!parsed.toString().equals(date) || !dates.add(parsed)) {
+                    throw new AmapClient.Failure("INVALID_RESPONSE");
+                }
             } catch (DateTimeException ex) {
-                throw new OpenMeteoClient.Failure("INVALID_RESPONSE");
+                throw new AmapClient.Failure("INVALID_RESPONSE");
             }
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("date", date);
+            day.put("dayWeather", requiredText(cast, "dayweather"));
+            day.put("nightWeather", requiredText(cast, "nightweather"));
+            day.put("dayTemperature", parseTemperature(cast.path("daytemp")));
+            day.put("nightTemperature", parseTemperature(cast.path("nighttemp")));
+            day.put("precipitationProbability", null);
+            daily.add(day);
+        }
+        return daily;
+    }
+
+    /**
+     * 读取高德温度字符串，保持空字符串为未知，不把无效值转换为零。
+     *
+     * @param value daytemp 或 nighttemp 字段，单位按接口约定为摄氏度
+     * @return 十进制温度数值；仅空字符串返回 null
+     * @throws AmapClient.Failure 字段不是字符串，或不是可表示为有限数值的十进制温度
+     */
+    private BigDecimal parseTemperature(JsonNode value) {
+        if (!value.isString()) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
+        }
+        String text = value.asString();
+        if (text.isEmpty()) {
+            return null;
+        }
+        if (!text.matches("-?[0-9]+(?:\\.[0-9]+)?")) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
+        }
+        try {
+            BigDecimal temperature = new BigDecimal(text);
+            if (!Double.isFinite(temperature.doubleValue())) {
+                throw new AmapClient.Failure("INVALID_RESPONSE");
+            }
+            return temperature;
+        } catch (NumberFormatException ex) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
         }
     }
 
     /**
-     * 从已校验的响应组装天气结果，保留原始单位、当地时间及 UTC 获取时间。
+     * 获取必须存在的非空文本，不把缺失或其他类型转换为默认文本。
      *
-     * @param body 已通过结构校验的天气响应
-     * @param location 本任务已登记的地点
-     * @param uri 本次请求的来源地址，由应用构造
-     * @return 状态为 OK 的结果对象；天气编码说明与原始字段一并保留
+     * @param object 含目标字段的服务 JSON 对象
+     * @param field 应用指定的字段名
+     * @return 保留原始内容的非空字符串
+     * @throws AmapClient.Failure 字段缺失、类型错误或仅含空白
      */
-    private Map<String, Object> createWeatherResult(JsonNode body, Map<String, Object> location, URI uri) {
+    private String requiredText(JsonNode object, String field) {
+        JsonNode value = object.path(field);
+        if (!value.isString() || value.asString().isBlank()) {
+            throw new AmapClient.Failure("INVALID_RESPONSE");
+        }
+        return value.asString();
+    }
+
+    /**
+     * 组装适配层天气结果，明确查询时刻、服务发布时间以及字段与单位的解释边界。
+     *
+     * @param forecast 已校验的高德预报对象
+     * @param daily 已校验并转换的完整逐日预报
+     * @param location 本任务已登记的地点
+     * @param uri 不含 Key 的本次来源地址
+     * @return 状态为 OK 的规范化结果，不含实况、坐标或未经提供的降水概率数值
+     */
+    private Map<String, Object> createWeatherResult(JsonNode forecast, List<Map<String, Object>> daily,
+            Map<String, Object> location, URI uri) {
+        Instant retrievedAt = clock.instant();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", "OK");
-        result.put("source", "Open-Meteo");
+        result.put("source", "高德地图");
         result.put("sourceUrl", uri.toString());
-        result.put("retrievedAt", Instant.now().toString());
+        result.put("retrievedAt", retrievedAt.toString());
         result.put("location", location);
-        for (String field : List.of("timezone", "utc_offset_seconds", "current", "current_units",
-                "daily", "daily_units")) {
-            result.put(field, body.path(field));
-        }
-        result.put("currentWeatherDescription", describeCode(body.path("current").path("weather_code")));
-        List<String> descriptions = new ArrayList<>();
-        for (JsonNode code : body.path("daily").path("weather_code")) {
-            descriptions.add(describeCode(code));
-        }
-        result.put("dailyWeatherDescriptions", descriptions);
-        result.put("interpretation", "current 是气象模型的当前条件；daily 是预报。"
-                + "precipitation_probability_max 是当天降水概率最大值，不代表一定下雨；null 为未知。"
-                + "天气编码解释见 https://open-meteo.com/en/docs#weathervariables 。");
+        result.put("timezone", TIMEZONE.getId());
+        result.put("localTime", retrievedAt.atZone(TIMEZONE).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        result.put("reportTime", forecast.path("reporttime").asString());
+        result.put("daily", daily);
+        result.put("units", Map.of("dayTemperature", "°C", "nightTemperature", "°C",
+                "precipitationProbability", "%"));
+        result.put("interpretation", "本结果由适配层整理高德预报，字段结构、摄氏度单位和 Asia/Shanghai 时区按接口及应用约定提供。"
+                + "dayTemperature/nightTemperature 是白天/夜间温度，不是最高/最低温度；空温度为 null。"
+                + "服务未提供降水概率，precipitationProbability 为 null，不能解释为 0%。"
+                + "localTime 是应用查询时钟的当地时间，reportTime 是服务返回的预报发布时间（Asia/Shanghai）。"
+                + "本结果仅包含预报，不包含实况；超出 daily 返回日期范围的信息未知。");
         return result;
     }
 
     /**
-     * 将天气编码转换为项目内定义的中文说明，未收录的整数编码保留原值供核对。
+     * 为缺少凭据提供固定配置提示，其他失败保留工具指定的缺口说明。
      *
-     * @param code 服务返回的 WMO 编码，null 或非整数表示无法映射
-     * @return 已定义的描述、未知编码提示，或非整数输入对应的“未知”
+     * @param failure 仅含应用预定义错误码的失败
+     * @param fallback 工具为其他错误定义的固定说明
+     * @return 不含凭据值的恢复提示
      */
-    private String describeCode(JsonNode code) {
-        if (!code.isIntegralNumber()) {
-            return "未知";
+    private String failureMessage(AmapClient.Failure failure, String fallback) {
+        if ("MISSING_API_KEY".equals(failure.getMessage())) {
+            return "缺少高德 Web 服务 Key，请通过 JVM 启动参数 -Damap.api.key 配置后重试。";
         }
-        return switch (code.asInt()) {
-            case 0 -> "晴";
-            case 1 -> "大部晴朗";
-            case 2 -> "局部多云";
-            case 3 -> "阴";
-            case 45 -> "雾";
-            case 48 -> "雾凇雾";
-            case 51, 53, 55 -> "毛毛雨（强度按原始 WMO 编码区分）";
-            case 56, 57 -> "冻毛毛雨";
-            case 61 -> "小雨";
-            case 63 -> "中雨";
-            case 65 -> "大雨";
-            case 66, 67 -> "冻雨";
-            case 71 -> "小雪";
-            case 73 -> "中雪";
-            case 75 -> "大雪";
-            case 77 -> "米雪";
-            case 80, 81, 82 -> "阵雨（强度按原始 WMO 编码区分）";
-            case 85, 86 -> "阵雪";
-            case 95 -> "雷暴";
-            case 96, 99 -> "伴冰雹的雷暴";
-            case 97 -> "强雷暴";
-            default -> "未知天气编码：" + code.asInt();
-        };
+        return fallback;
     }
 
     /**
@@ -300,11 +387,11 @@ public final class WeatherTools {
     }
 
     /**
-     * 将实际结果序列化后追加本任务事件记录，供报告核对工具输入与输出。
+     * 序列化结果并追加本任务事件，保持既有 tool、arguments、result 记录结构。
      *
      * @param tool 已开放的工具名称
-     * @param args 本次请求参数，包括被工具拒绝的参数
-     * @param result 成功结果或明确的错误结果
+     * @param args 本次工具参数，包括被工具拒绝的参数，不含 Key
+     * @param result 规范化成功结果或明确错误结果，不含 Key
      * @param started 当前工具开始执行时的单调时钟读数，单位纳秒
      * @return 提供给工具调用框架的 JSON 文本
      */

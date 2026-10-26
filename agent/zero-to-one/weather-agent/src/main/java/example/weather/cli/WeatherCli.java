@@ -9,6 +9,7 @@ import example.weather.service.WeatherReportStore;
 import example.weather.service.WeatherService;
 import example.weather.tool.WeatherTools;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,28 +67,38 @@ public final class WeatherCli {
     private static void printUsage() {
         System.out.println("HTTP 服务：在 IDEA 中运行 WeatherApplication；本 WeatherCli 仅执行一次性任务。\n"
                 + "HTTP 接口：POST http://127.0.0.1:8081/api/weather/ask（默认地址）\n"
-                + "天气工具检查：--weather-check（真实 Open-Meteo，不调用模型）\n"
+                + "天气工具检查：--weather-check（真实高德接口，不调用模型）\n"
                 + "模型实验：--ask=问题 --prompt=basic|rules|examples --context=full|state|compact\n"
-                + "服务及模型实验需要 DEEPSEEK_API_KEY；报告会保存本次问题，请使用公开教学问题。");
+                + "服务及模型实验需要 DEEPSEEK_API_KEY；天气工具需 JVM 参数 -Damap.api.key=你的Key。\n"
+                + "报告会保存本次问题，请使用公开教学问题。");
     }
 
     /**
-     * 使用固定公开地点检查城市和天气接口，不调用模型或使用模拟数据兜底。
+     * 搜索北京并从本次结果选取唯一同名候选，检查真实行政区与预报接口。
+     * 需要 JVM 系统属性 amap.api.key，不调用模型或使用模拟数据兜底；候选缺失或有歧义时不查询天气。
      *
      * @return 包含工具记录的报告；两项工具结果均为 OK 时状态才为 COMPLETED
      */
     private static Map<String, Object> runWeatherCheck() {
         WeatherTools tools = new WeatherTools();
         String locations = tools.searchLocations("北京");
-        // 1816670 来自已核验的北京候选；正常 Agent 入口由模型结合用户要求选择 ID。
-        String weather = tools.getWeather(1816670);
-        boolean ok = "OK".equals(JSON.readTree(locations).path("status").asString(""))
-                && "OK".equals(JSON.readTree(weather).path("status").asString(""));
+        var result = JSON.readTree(locations);
+        List<Long> matches = new ArrayList<>();
+        for (var candidate : result.path("locations")) {
+            String name = candidate.path("name").asString("");
+            if ("北京".equals(name) || "北京市".equals(name)) {
+                matches.add(candidate.path("id").asLong());
+            }
+        }
+        boolean searched = "OK".equals(result.path("status").asString(""));
+        String weather = searched && matches.size() == 1 ? tools.getWeather(matches.getFirst()) : null;
+        boolean ok = weather != null && "OK".equals(JSON.readTree(weather).path("status").asString(""));
         return new LinkedHashMap<>(Map.of(
                 "kind", "LIVE_WEATHER_TOOL_CHECK",
                 "status", ok ? "COMPLETED" : "STOPPED",
                 "toolEvents", tools.events(),
-                "answer", ok ? "真实城市与天气接口返回成功。" : "天气接口检查失败，请查看工具错误码。"));
+                "answer", ok ? "高德行政区与预报接口返回成功。"
+                        : "高德工具检查未完成，请查看工具错误码或候选歧义。"));
     }
 
     /**

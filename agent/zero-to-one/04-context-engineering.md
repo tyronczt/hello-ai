@@ -12,7 +12,7 @@
 |---|---|---|
 | [KvCacheLab.java](context-labs/KvCacheLab.java) | 注意力计算、逐层 K/V 复用、修改前缀 | 纯 JDK 数值实验，不调用模型 |
 | [first-agent](first-agent/README.md) 的 `--context-lab` | HTTP 消息、Skills、状态、压缩与执行边界 | Spring AI 和 Java 工具真实运行，模型响应由本机脚本预设 |
-| [weather-agent](weather-agent/README.md) | 提示词与上下文策略在天气任务中的表现 | 显式运行模型时产生真实用量；天气来自 Open-Meteo |
+| [weather-agent](weather-agent/README.md) | 提示词与上下文策略在天气任务中的表现 | 显式运行模型时产生真实用量；天气来自高德，Key 通过 JVM 参数提供 |
 
 不用把所有问题塞进一个大实验。先看输入如何变成计算，再检查内容和权限，最后处理上下文增长。
 
@@ -125,7 +125,7 @@ Token ID 序列 → 推理计算
   {
     "role": "tool",
     "tool_call_id": "call_beijing",
-    "content": "{\"status\":\"OK\",\"locations\":[{\"id\":1816670,\"name\":\"北京\"}]}"
+    "content": "{\"status\":\"OK\",\"locations\":[{\"id\":110000,\"name\":\"北京市\"}]}"
   }
 ]
 ```
@@ -352,7 +352,7 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ### 5.1 一句“你是专家”缺少哪些决定依据
 
-“你是专业天气助手，请准确回答”并没有告诉模型：城市缺失时要不要查询；多个同名地点如何选择；查到当前温度能不能回答明天；概率为 null 是未知还是 0%；何时停止继续调用工具。
+“你是专业天气助手，请准确回答”并没有告诉模型：城市缺失时要不要查询；多个同名地点如何选择；能不能用相邻日期的温度回答明天；概率为 null 是未知还是 0%；何时停止继续调用工具。
 
 把这些判断写成清晰流程，比重复“认真、专业、不要犯错”更能表达任务。另一方面，把所有分支都写成几十页自然语言 `if/else`，又会增加重复与冲突。适合放在 system 的，是稳定的目标、事实边界、工作顺序和完成条件；精确参数校验与权限控制应留在 Java。[系统提示的具体程度与组织方式](https://www.anthropic.com/research/effective-context-engineering-for-ai-agents)
 
@@ -366,14 +366,14 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ```text
 1. 确认用户指定的城市与日期；缺少必要信息或同名地点无法判断时追问。
-2. 用 searchLocations 定位地点，再用其实际 ID 调用 getWeather。
-3. 以当地 current.time 的日期理解今天和明天；只使用 daily.time 中匹配目标日期的数据。
+2. 用 searchLocations 定位地点，再用其实际返回的行政区编码作为 locationId 调用 getWeather。
+3. 根据当地 localTime 确定目标日期；只使用 daily 中 date 匹配的数据，不用相邻日期冒充。
 4. 多城市问题逐个核对地点与日期。没有新信息需要获取时结束，不重复查询来凑步骤。
 ```
 
 这些规则规定了选择依据，没有写死每次都必须调用几次工具。用户没有城市时可以追问；结果缺项时可以结束并说明缺口。取得非空答案、工具全部成功、业务问题完整解决，是不同的完成层次。
 
-第三层是少量易错情形示例。比如模型看到 `precipitation_probability_max=null` 后，应说明接口未提供该值。这种示例教的是处理方式；如果示例中塞入一个看似真实的北京温度，模型反而可能把教学数据混入本次答案。
+第三层是少量易错情形示例。比如模型看到 `precipitationProbability=null` 后，应说明接口未提供该值。这种示例教的是处理方式；如果示例中塞入一个看似真实的北京温度，模型反而可能把教学数据混入本次答案。
 
 ### 5.3 系统提示里的内容也需要分工
 
@@ -390,10 +390,10 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ### 实践四：把提示词优化当作可以复查的对照
 
-先按 [weather-agent 说明](weather-agent/README.md)配置运行环境。常规调用在 IDEA 中启动 HTTP 服务；下面使用独立的 `WeatherCli` 辅助入口做一次性对照。终端方式需先打包并在该终端配置模型密钥，命令在模块目录执行：
+先按 [weather-agent 说明](weather-agent/README.md)配置运行环境。常规调用在 IDEA 中启动 HTTP 服务；下面使用独立的 `WeatherCli` 辅助入口做一次性对照。终端方式需先打包，并在该终端配置模型环境变量 `DEEPSEEK_API_KEY`。高德 Web 服务 Key 用 JVM 参数 `-Damap.api.key=你的Key` 传入，不从环境变量读取；将命令中的占位文本替换为自己的 Key，再在模块目录执行。IDEA 中同一参数应填在 VM options，不能放到 Program arguments；不要共享含 Key 的运行配置，也不要把真实 Key 发到对话、模型、报告或版本库：
 
 ```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher '--ask=北京市明天需要带伞吗？请给出降水概率、目标日期和来源。' --prompt=basic --context=full
+java '-Damap.api.key=你的Key' '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' '-Dloader.main=example.weather.cli.WeatherCli' -cp target/weather-agent-0.0.1-SNAPSHOT.jar org.springframework.boot.loader.launch.PropertiesLauncher '--ask=北京市明天需要带伞吗？请给出降水概率、目标日期和来源。' --prompt=basic --context=full
 ```
 
 保持问题和 `--context=full` 不变，分别用 `rules`、`examples` 再运行。每次都会产生真实模型用量。不要把答案更长、更像专家作为评分标准，可以事先定义：
@@ -401,14 +401,14 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8'
 | 任务 | 可检查的成功条件 |
 |---|---|
 | 未提供城市 | 追问必要地点，不编造默认城市 |
-| 北京明天 | 目标日期匹配 daily 中的明天，不能使用 current 代替 |
+| 北京明天 | 按 `localTime` 确定明天，匹配 `daily[].date`，不能用发布时间或相邻预报代替 |
 | 北京与上海比较 | 两城分别有地点、日期、事实和来源 |
-| 工具未提供概率 | 明确未知，不能给出 0% 或从天气编码推算概率 |
+| 工具未提供概率 | 当前高德预报的 `precipitationProbability` 为 `null`，明确未知，不从湿度或天气文字推算 |
 | 查询范围以外的日期 | 说明能力缺口，不能用最近一天冒充 |
 
 真实天气会变化，单次顺序运行也受到模型随机性影响。它适合初步观察；严谨对照需要冻结工具返回、固定其他设置、对每个模式重复运行一组任务，并检查失败样本。已有离线脚本固定了模型答案，所以只能验证组织机制，不能承担这个质量对照。
 
-发现失败后先归因：数据没提供，应改工具范围；事实进入了上下文但被忽略，才检查提示和布局；批次不配对，应改消息构造；工具越权，则必须检查执行边界。不要把所有问题都归结为 system 不够长。
+发现失败后先归因：数据没提供，先确认工具能力并保留未知；事实进入了上下文但被忽略，才检查提示和布局；批次不配对，应改消息构造；工具越权，则必须检查执行边界。不要把所有问题都归结为 system 不够长。
 
 ## 6、提示注入：上下文安全的核心威胁
 
@@ -626,7 +626,7 @@ java '-Dfile.encoding=UTF-8' -jar target/first-agent-0.0.1-SNAPSHOT.jar --contex
 | 来源与获取时间 | 无法判断依据、版本与新鲜度 |
 | 调用参数、成功/失败 | 无法区分已取得结果与失败尝试 |
 
-来源是否明确，是压缩能否安全复用的重要条件。把两份版本冲突的资料总结成一个肯定句，虽然更短，却可能抹掉最有价值的信息。天气工具保留 current、daily、单位和时间的原因也在这里：current 的有效时间与 `retrievedAt` 获取时间含义不同，daily 是按当地日期组织的预报。[Open-Meteo 字段说明](https://open-meteo.com/en/docs)
+来源是否明确，是压缩能否安全复用的重要条件。把两份版本冲突的资料总结成一个肯定句，虽然更短，却可能抹掉最有价值的信息。当前天气适配层分别保留 `localTime`（当地查询时钟）、`reportTime`（预报发布时间）、`retrievedAt`（获取时刻）和 `daily[].date`（预报日期），它们不能相互替代。`daily` 每项保存日夜天气、日夜温度和未知概率；`timezone` 与 `units` 是适配层约定。高德原始字段见[天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)，统一返回由 [WeatherTools.java](weather-agent/src/main/java/example/weather/tool/WeatherTools.java) 整理，外部请求由 [AmapClient.java](weather-agent/src/main/java/example/weather/tool/AmapClient.java) 执行。
 
 ### 9.3 保留完整记录，重建较短的发送视图
 
@@ -695,7 +695,7 @@ $report.rounds[-1].messages | ConvertTo-Json -Depth 30
 
 先核对用户问题与规则，再核对工具参数和结果，然后看结果如何进入下一轮，最后判断候选答案是否有依据。`COMPLETED` 只表示得到非空候选回答，可能是答案，也可能是合理追问；它不表示自动通过事实核验。
 
-单独运行 `--weather-check` 只查询真实天气，不调用模型，因此没有 `rounds`；该入口只读取 `toolEvents`。所有教学报告都应使用公开样例问题，避免把个人信息或企业资料写入可分享文件。
+单独运行 `--weather-check` 也需要 JVM 参数 `-Damap.api.key=你的Key`，只查询高德行政区和天气，不调用模型，因此没有 `rounds`；该入口只读取 `toolEvents`。所有教学报告都应使用公开样例问题，避免把个人信息或企业资料写入可分享文件。
 
 ### 10.2 不同检查能支持什么结论
 
@@ -704,10 +704,10 @@ $report.rounds[-1].messages | ConvertTo-Json -Depth 30
 | Java 编译与 Maven 打包 | 代码、依赖和构建路径可用 | 模型正确理解任务 |
 | KV 数值自检 | 教学因果注意力中全量与增量结果等价、前缀变更失效 | 线上延迟、显存与费用节省比例 |
 | `--context-lab` | 实际 HTTP 适配、消息配对、Java 工具和边界行为 | 真实模型质量或注入抵抗率 |
-| `--weather-check` | 当次真实 Open-Meteo 接入与字段处理 | 模型能正确使用天气 |
+| `--weather-check` | 成功运行时可验证当次高德行政区、天气接入与适配字段 | 模型能正确使用天气 |
 | 真实模型对照 | 指定任务、数据和配置下的表现 | 所有问题和所有模型都会改善 |
 
-本章本次修订在 JDK 21 下运行了 KV 数值自检、`first-agent` 打包与 81 项离线断言，以及 `weather-agent` 编译。没有将这些结果写成真实模型胜率、缓存命中率或 Token 节省百分比。服务商缓存策略和 SDK 字段会随版本变化，应回到实际请求、响应与官方文档核对。
+此前修订在 JDK 21 下运行了 KV 数值自检、`first-agent` 打包与 81 项离线断言，以及 `weather-agent` 编译；这些记录不代表本次高德完整 Agent 已完成线上验证。没有将这些结果写成真实模型胜率、缓存命中率或 Token 节省百分比。服务商缓存策略和 SDK 字段会随版本变化，应回到实际请求、响应与官方文档核对。
 
 ## 11、本章小结
 
@@ -759,5 +759,5 @@ $report.rounds[-1].messages | ConvertTo-Json -Depth 30
 - [OWASP：LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)：注入威胁与纵深防御。
 - [Agent Skills 规范](https://agentskills.io/specification)、[Skills 的机制与实践](https://www.anthropic.com/research/equipping-agents-for-the-real-world-with-agent-skills)：渐进式披露、资源组织与信任边界。
 - [Spring AI：Tool Calling](https://docs.spring.io/spring-ai/reference/api/tools.html)：应用执行工具并回填结果。
-- [Open-Meteo 天气 API](https://open-meteo.com/en/docs)：天气字段、日期、单位与来源。
+- [高德天气查询](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)、[行政区域查询](https://lbs.amap.com/api/webservice/guide/api/district)：原始预报字段与行政区编码；工具统一返回另见 `WeatherTools`，HTTP 适配见 `AmapClient`。
 - [小天视觉内容](https://github.com/tyronczt/AI-Exploration/tree/main/xiaotian-visual)：正文三张机制图采用的角色与视觉方案。

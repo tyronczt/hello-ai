@@ -88,7 +88,7 @@ public final class WeatherAgent {
         var context = new WeatherContext(WeatherPrompts.of(promptMode), question, contextMode);
         var callbacks = ToolCallbacks.from(tools);
         // 2.0.1 的新 Builder 自带默认模型；从已配置选项派生，避免覆盖 YAML 中的模型与参数。
-        var configured = model.getDefaultOptions();
+        var configured = model.getOptions();
         var builder = configured instanceof OpenAiChatOptions openAi ? openAi.mutate() : OpenAiChatOptions.builder();
         var options = builder.toolCallbacks(callbacks).build();
         Prompt prompt = new Prompt(context.initial(), options);
