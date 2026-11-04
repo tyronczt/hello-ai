@@ -162,13 +162,19 @@ $$
 
 模型算出候选分数后，生成策略会影响如何选择。温度通常用于调整分布的集中程度；top-p 通常按概率从高到低累计，保留达到阈值的一组候选，再从中采样。不同模型服务的具体实现可能不同，参数也未必都开放。
 
-降低温度有时能减少输出变化，但并不等于“保证事实正确”。一个错误候选即使稳定地排在前面，重复选择它仍然会错。要验证采样如何影响分布，可以运行项目中的离线小实验：
-
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' agent/zero-to-one/prompt-labs/SamplingLab.java
-```
-
-该命令从仓库根目录执行，使用程序预设的分数演示计算，不调用真实模型。项目说明和前置条件见 [prompt-labs](prompt-labs/README.md)。
+> **实验 3-1：固定候选分数，观察温度与 top-p 怎样影响选择**
+>
+> 这个实验先把某一步生成简化为三个候选，分别记作 A、B、C，给它们预设原始分数 `[2, 1, 0]`。这些分数是教学输入，不是从真实模型中提取的 logits。实验保持分数不变，分别将温度设为 `0.5`、`1` 和 `2`，通过 softmax 计算三项候选的概率，从而单独观察温度的作用。
+>
+> 温度为 `1` 时，A、B、C 的概率约为 `66.52%`、`24.47%` 和 `9.00%`。温度降到 `0.5`，A 的概率升到约 `86.68%`；温度升到 `2`，A 的概率降到约 `50.65%`，其余候选获得更多概率。三种设置下，A 始终排在第一位。这里可以看到，正温度缩放改变了分布的集中程度，却没有改变这组固定分数的排序；若按分布采样，各候选被选中的机会会随之变化。
+>
+> 接着固定温度为 `1`，设置 `top-p=0.8`。程序按概率从高到低累计：只保留 A 时约为 `66.52%`，尚未达到阈值；加入 B 后约为 `91.00%`，已经达到阈值，因此保留 A、B，排除 C。再将保留的概率重新归一化，得到 A 约 `73.11%`、B 约 `26.89%`、C 为 `0` 的分布，供后续采样使用。这样就能看清 top-p 的两个动作：先确定候选集合，再调整集合内的概率。
+>
+> 实验还单独比较贪心选择，即直接取分数最高的一项。在 `[2, 1, 0]` 下，它选择 A；把预设分数改成 `[0, 2, 1]` 后，它转而选择 B。这一步用于区分“调整选择策略”和“改变候选分数”：即使采用贪心选择，选中谁仍然取决于前面的模型计算给出了什么分数。程序演示的是分布计算与选择规则，没有实际执行随机抽样或测量生成质量。
+>
+> 回到故障摘要，降低温度有时能减少输出变化，但不能保证事实正确。如果“补出一个恢复时间”这个错误候选本来就排在前面，更集中地选择它仍然会错。温度与 top-p 没有给输入增加报告事实；恢复时间是否有依据，仍需回到原报告核对。
+>
+> 完整计算和 10 项数值与边界检查收录在配套的 [SamplingLab.java](prompt-labs/SamplingLab.java) 中，读者可以修改预设分数和参数，观察分布怎样变化。运行方式与前置条件见 [prompt-labs](prompt-labs/README.md)。
 
 ## 3. 应用怎样把规则交给模型
 
@@ -290,13 +296,17 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 
 项目中的 `COMPLETED` 只表示模型产生了非空候选，可能是答案，也可能是追问。HTTP 200 和这个状态都不代表事实核验通过。应打开本次报告的 `rounds[].messages` 和 `toolEvents`，把候选与实际调用结果对照，而不是只检查答案是否写了“来源”。
 
-可以从仓库根目录运行离线实验，观察日期错位、遗漏来源和未知值填零的候选怎样被拒绝：
-
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' agent/zero-to-one/prompt-labs/EvidenceCheckLab.java
-```
-
-实验使用构造好的数据，不包含自然语言答案提取，也没有接入天气应用的验收流程。
+> **实验 3-2：对照天气证据，检查候选回答中的字段错误**
+>
+> 这个实验固定同一地点、目标日期、时区和来源，构造一份降水概率为 `null` 的天气证据，再准备字段一致和含有不同错误的候选回答。证据与候选都直接表示为 Java 数据对象，所有数据均为教学夹具，不来自本次真实天气查询。实验把事实依据保持不变，每次只改变候选中的一个关键字段，观察核验程序能否识别差异。
+>
+> 首先比较未知值的两种处理。候选保留 `null` 时，核验返回空错误列表；把概率改成 `0` 时，返回 `PROBABILITY`，指出候选将未知写成了确定数值。随后分别把候选日期改成相邻一天、换成另一个地点、删除来源或更换时区，程序对应返回 `DATE`、`LOCATION`、`SOURCE` 和 `TIMEZONE`。这些候选即使字段类型合法，也可能与本次证据不一致。
+>
+> 核验还要先确认有没有适用的证据。实验将未取得预报表示为证据为空：候选如实返回“不可用”且不附带天气事实时可以通过；仍然给出预报时，返回 `NO_EVIDENCE`。如果证据本身不属于目标日期，则先返回 `EVIDENCE_MISMATCH`，而不是拿这份证据继续评判候选。这两组对照说明，核验既要检查答案，也要检查用来判断答案的依据是否适用于当前任务。
+>
+> 配套程序共包含 12 个合成案例检查，还覆盖已有适用证据却不作答、声称作答却缺少事实，以及概率超出 `0～100` 的输入边界。最后一项在构造数据时就被拒绝，其余案例对照核验返回的错误列表。某个错误案例检查通过，表示程序识别出了预设错误，不表示该候选回答是正确的。
+>
+> 这个实验主要演示结果层的字段核验：空错误列表只说明当前检查覆盖的字段一致，不能证明未来天气一定如此。它不包含 JSON 解析、自然语言答案提取、工具调用轨迹检查或真实模型评估，也没有接入天气应用的验收流程。完整用例和核验逻辑收录在 [EvidenceCheckLab.java](prompt-labs/EvidenceCheckLab.java) 中，运行方式见 [prompt-labs](prompt-labs/README.md)。
 
 同样，要按检查的实际范围描述结论。`mvn -q -DskipTests compile` 只能证明编译通过。[agent-ready-template](https://github.com/adongwanai/agent-ready-template/blob/main/template/AGENTS.md)中的[入口检查脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/verify-harness.mjs)检查文件与引用，[任务校验脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/validate-specs.mjs)检查示例 JSON 的 Schema；这些结构检查也不能替代业务验收。
 
@@ -344,7 +354,7 @@ Content-Type: application/json
 
 把确认有效的改动和失败样本保留下来，记录对应规则版本、模型与工具条件、验证时间。工具字段或业务规则变化时复核旧示例，源码移动时更新链接，让下一次修改有据可查。
 
-### 5.3 实验：用线上 DeepSeek 跑通工具调用与提示词对照
+### 5.3 实验 3-3：用线上 DeepSeek 跑通工具调用与提示词对照
 
 前面的两个离线程序分别解释采样计算和字段核验。下面把任务交给真实模型：Java 向线上 DeepSeek 发送消息与工具定义，接收模型提出的调用，执行本地工具，再把结果交回模型。最后固定工具数据，比较提示词怎样影响行为和答案。
 
@@ -503,5 +513,4 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8'
 - [centminmod：项目规则与记忆配置](https://github.com/centminmod/my-claude-code-setup/blob/master/CLAUDE.md)：长期资料按用途组织、按需读取的实践。
 - [agent-ready-template](https://github.com/adongwanai/agent-ready-template)：规则、任务、契约、验证与证据的组织示例。
 - [高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)：当前天气工具的数据来源与接口字段。
-- 本地技术阅读库中的三篇文章：上文已分别链接其微信原文。2026-10-28 核对时，三篇均跳转到验证码页；相关观点依据本地保存的正文，保留原文链接供完成验证后复核。
 - 项目实现：[weather-agent](weather-agent/README.md) 的天气工具与消息循环、[prompt-labs](prompt-labs/README.md) 的两个离线实验和线上 DeepSeek 工具调用实验。
