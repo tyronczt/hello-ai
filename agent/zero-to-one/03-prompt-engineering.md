@@ -18,7 +18,9 @@
 
 这段提示词交代了读者、材料、缺失信息的处理办法和输出要求。提示词的作用就在这里：**把任务及其条件说清楚，让模型知道这次要依据什么、怎样回答。**效果还需要用实际结果检查。
 
-下面先把这份提示词写好，再从 Token 和逐步生成解释它为什么会影响回答，最后结合本系列的 [weather-agent](weather-agent/README.md)，看规则怎样进入请求、工具怎样执行、结果怎样核验。文中例子用于讲解，项目的实际验证范围见 README。
+下面先把任务说清楚，再解释 Token、逐步生成与采样。第 3 节区分应用消息和编码 Agent 的长期规则，第 4 节沿 [weather-agent](weather-agent/README.md) 追踪执行，第 5 节用固定数据观察提示词差异。两个离线实验帮助理解计算和核验，线上实验才直接改变提示词。
+
+可以先打开[三次模型调用的离线回放](prompt-demos/three-model-calls/index.html)，展开第一轮 system 和 user，再找下一轮新增的 assistant/tool 消息。先记下：哪些要求来自规则，哪些事实直到工具返回后才出现？这是 2026-10-26 单次真实天气任务的历史记录，无需 Key；它提供可检查的执行过程，不承担提示词版本效果比较。
 
 ## 1. 先动手：把一句模糊要求变成可执行任务
 
@@ -102,7 +104,15 @@
 输入文本 → 分词器按自身规则切分 → Token 序列 → Token ID 序列 → 模型计算
 ```
 
-例如，输入“恢复过程未提供”。这里不预设它会被切成哪些 Token：不同分词器可能采用不同切法。同一分词器也会根据文本和相邻字符得到相应结果，因此不能只看某个字或单词，就断言它在所有句子中都占固定数量的 Token。上面的箭头用于说明步骤，不代表每个实现都严格按这种方式分阶段处理；有些分词器还会先对文本做规范化。
+以“恢复过程未提供”为例，假设一个**仅用于示意的教学词表**包含“恢复”“过程”“未提供”三个片段，那么可以画成：
+
+```text
+恢复过程未提供 → [恢复, 过程, 未提供] → [片段甲的编号, 片段乙的编号, 片段丙的编号]
+```
+
+这不是任何真实模型的分词结果，不能据此计算用量。它只把“文本片段”和“词表编号”分开：前者便于人读，后者便于程序查找。像 Java 枚举的业务编码一样，编号用于标识，不表示含义的大小；模型向量还需要另外计算。
+
+实际切法由目标分词器决定，同一字词在不同上下文中的切分也可能不同。箭头只说明步骤；有些分词器还会先规范化文本。核对真实切分要用目标模型配套的分词工具；服务的 usage 可以核对请求用量，但不展示每个片段怎样切分。
 
 切分后，分词器根据词表把 Token 转成对应的整数编号，也就是 **Token ID**。这些编号用于让程序表示和查找 Token，本身不是文本含义的数值大小，也不意味着编号相近的 Token 含义相近。同一个数字在不同分词器的词表中也不能假定对应相同内容。模型接收编号后，还要将其转换为用于计算的向量；这一步留到第 2.3 节展开。
 
@@ -116,7 +126,7 @@
 
 ![从输入消息到下一 Token 的逐步生成](diagram/autoregressive-generation.svg)
 
-图 3：输入经过处理后，模型逐步选择并追加 Token。下面先看这个循环，再进入“模型计算”内部。
+图 3：第 2 节的生成流程总览。第 2.2 节解释追加 Token 的循环，第 2.3 节展开图中的“模型计算”。
 
 ### 2.2 模型一步一步续写，而不是一次查出整篇答案
 
@@ -134,13 +144,13 @@ $$
 P_\theta(y\mid x)=\prod_{t=1}^{m} P_\theta(y_t\mid x,y_{<t})
 $$
 
-`x` 是本次输入，`y_t` 是第 `t` 个输出 Token，`y_{<t}` 是它之前已经生成的内容，`θ` 代表模型参数。整段输出的概率由各步条件概率相乘得到。改提示词主要是改 `x`；普通推理请求不会因为你写了新规则就对参数做反向传播。换一个不带该规则的新请求，也不能假设模型会永久记住它。
+`x` 是应用组装后的完整输入，包括规则、问题、历史及本轮提供的工具信息，不只是用户敲下的那句话；`y_t` 是第 `t` 个输出 Token，`y_{<t}` 是它之前已经生成的内容，`θ` 代表模型参数。整段输出的概率由各步条件概率相乘得到。改提示词主要是改 `x`；普通推理请求不会因为你写了新规则就对参数做反向传播。换一个不带该规则的新请求，也不能假设模型会永久记住它。
 
 微调则通过训练更新参数，与这种利用当前输入的方式不同。[GPT-3 论文](https://arxiv.org/abs/2005.14165)研究了在输入中给任务与示例的能力；具体效果仍取决于模型和任务。
 
 ### 2.3 再往里看：模型怎样结合上下文
 
-上一节把“根据输入计算下一步”当成一个整体。以常见的 **decoder-only Transformer** 为例，可以继续拆开来看。
+上一节把“根据输入计算下一步”当成一个整体。以常见的 **decoder-only Transformer**（生成时根据当前可见前文预测后续 Token 的一类架构）为例，可以继续拆开来看。先记住三个位置：Token ID 转成向量；注意力汇集上下文位置的信息；最后才计算候选 Token 的分数。
 
 首先，Token 被转换成向量，并结合位置信息。向量用于后续数值计算，位置信息帮助网络区分内容的顺序；此时还没有选出下一 Token。
 
@@ -152,7 +162,7 @@ $$
 
 ![从 Token 表示到注意力和下一 Token 的简化计算链](diagram/transformer-attention.svg)
 
-图 4：先表示输入，再汇集上下文，经过多层变换后预测下一 Token。图中省略了部分网络细节，具体模型实现可能不同。注意力机制的来源见 [Transformer 原始论文](https://arxiv.org/abs/1706.03762)。
+图 4：展开图 3 的“模型计算”，不是另一套生成流程。先表示输入，再汇集上下文，经过多层变换后预测下一 Token。图中省略了部分网络细节，具体模型实现可能不同。注意力机制的来源见 [Transformer 原始论文](https://arxiv.org/abs/1706.03762)。
 
 回到故障摘要：任务规则、报告和示例都参与了这些计算，所以它们可以影响模型怎样处理“恢复过程”。给出示例时，模型利用的是本次上下文中的对应关系；无关材料、冲突规则和过期示例也可能干扰结果。
 
@@ -164,17 +174,22 @@ $$
 
 > **实验 3-1：固定候选分数，观察温度与 top-p 怎样影响选择**
 >
-> 这个实验先把某一步生成简化为三个候选，分别记作 A、B、C，给它们预设原始分数 `[2, 1, 0]`。这些分数是教学输入，不是从真实模型中提取的 logits。实验保持分数不变，分别将温度设为 `0.5`、`1` 和 `2`，通过 softmax 计算三项候选的概率，从而单独观察温度的作用。
+> 把一步生成缩成三个候选，以人工 logits `[2, 1, 0]` 为基线。为便于讨论事实错误，假设 A 是“编造恢复时间”，B 是“保留未知”，C 是“请求补充材料”。这只是合成的候选语义，不是真实模型测得的分数。实验不改变提示词，也不执行随机抽样，而是检查选择参数改变了什么。
 >
-> 温度为 `1` 时，A、B、C 的概率约为 `66.52%`、`24.47%` 和 `9.00%`。温度降到 `0.5`，A 的概率升到约 `86.68%`；温度升到 `2`，A 的概率降到约 `50.65%`，其余候选获得更多概率。三种设置下，A 始终排在第一位。这里可以看到，正温度缩放改变了分布的集中程度，却没有改变这组固定分数的排序；若按分布采样，各候选被选中的机会会随之变化。
+> **第一步，先预测再揭晓。**固定分数，把温度从 `1` 分别改为 `0.5`、`2`。记录 A 的概率会怎样变化、最高分位置会不会变化。配套程序默认只显示输入和问题；写下 `--predict` 并加 `--reveal` 才显示分布，让读者先判断，再用计算修正解释。
 >
-> 接着固定温度为 `1`，设置 `top-p=0.8`。程序按概率从高到低累计：只保留 A 时约为 `66.52%`，尚未达到阈值；加入 B 后约为 `91.00%`，已经达到阈值，因此保留 A、B，排除 C。再将保留的概率重新归一化，得到 A 约 `73.11%`、B 约 `26.89%`、C 为 `0` 的分布，供后续采样使用。这样就能看清 top-p 的两个动作：先确定候选集合，再调整集合内的概率。
+> **第二步，只改变阈值。**恢复温度 `1`，比较 `top-p=0.8` 与 `0.95`，观察保留几个候选、剩余概率怎样重新归一化。再试 `0.1` 与 `1`。分数、温度、阈值均可通过参数指定；探索输入不参与固定回归断言。
 >
-> 实验还单独比较贪心选择，即直接取分数最高的一项。在 `[2, 1, 0]` 下，它选择 A；把预设分数改成 `[0, 2, 1]` 后，它转而选择 B。这一步用于区分“调整选择策略”和“改变候选分数”：即使采用贪心选择，选中谁仍然取决于前面的模型计算给出了什么分数。程序演示的是分布计算与选择规则，没有实际执行随机抽样或测量生成质量。
+> **第三步，检验解释。**将分数改为 `[0, 2, 1]`，再试全部相等的 `[0, 0, 0]`。不要继续套用“A 始终第一”的旧观察；程序按实际输入报告分布和贪心索引，并列时取原顺序第一项。若错误候选本来占优，降低温度可能更集中地选择它，仍然没有增加恢复时间的依据。
 >
-> 回到故障摘要，降低温度有时能减少输出变化，但不能保证事实正确。如果“补出一个恢复时间”这个错误候选本来就排在前面，更集中地选择它仍然会错。温度与 top-p 没有给输入增加报告事实；恢复时间是否有依据，仍需回到原报告核对。
+> <details>
+> <summary>完成预测后再看：默认分数的计算结果</summary>
 >
-> 完整计算和 10 项数值与边界检查收录在配套的 [SamplingLab.java](prompt-labs/SamplingLab.java) 中，读者可以修改预设分数和参数，观察分布怎样变化。运行方式与前置条件见 [prompt-labs](prompt-labs/README.md)。
+> `T=1` 时 A/B/C 约为 `66.52% / 24.47% / 9.00%`；`T=0.5` 时 A 约为 `86.68%`，`T=2` 时约为 `50.65%`。正温度缩放保留这组分数的排序。温度为 1、top-p 为 0.8 时保留 A、B，重新归一化后约为 `73.11% / 26.89% / 0%`；阈值为 0.95 时保留三项。
+>
+> </details>
+>
+> [SamplingLab.java](prompt-labs/SamplingLab.java) 中，`main → parseOptions` 是探索入口，`softmax / topP / argmax` 是计算实现。`--self-check` 另行运行 10 项固定数值与边界检查，包括共同平移分数和非法输入。减最大值避免本例指数溢出，属于数值实现问题，不是提示词技巧。操作与记录模板见 [prompt-labs](prompt-labs/README.md)。实验说明参数如何改变候选机会；内容是否有依据，仍须核对报告。
 
 ## 3. 应用怎样把规则交给模型
 
@@ -193,7 +208,7 @@ $$
 
 消息角色由应用设置，再通过模型服务或适配器转换成相应输入格式。普通文本中的 `<system>` 标签不等于真正的 system 消息。[Hugging Face 的 Chat Template 文档](https://huggingface.co/docs/transformers/en/chat_templating)展示了这层转换。
 
-外部资料即使用标签分隔，也可能夹带“忽略此前规则”之类指令。应用需要保留来源、说明资料用途，并独立限制工具参数、访问范围和调用次数。相关风险见本地文章库中的[《Agent提示词注入攻击》](https://mp.weixin.qq.com/s?__biz=MzI1MzYzMjE0MQ==&mid=2247521453&idx=1&sn=a43b95ca00458d532f29d70e80f0d118&scene=58&subscene=0)。
+外部资料即使用标签分隔，也可能夹带“忽略此前规则”之类指令。应用需要保留来源、说明资料用途，并独立限制工具参数、访问范围和调用次数。相关风险也可参阅[《Agent提示词注入攻击》](https://mp.weixin.qq.com/s?__biz=MzI1MzYzMjE0MQ==&mid=2247521453&idx=1&sn=a43b95ca00458d532f29d70e80f0d118&scene=58&subscene=0)。
 
 ### 3.2 把跨任务的约定保存为长期规则
 
@@ -264,7 +279,7 @@ return switch (mode) {
 
 ![basic、rules、examples 三种提示词方案分别使用 BASE、BASE 加 RULES、BASE 加 RULES 加 EXAMPLES](assets/03-prompt-engineering/prompt-versions.png)
 
-三种方案展示的是提示词内容的累加关系，实际效果需要分别运行后核对。图中使用 CLI 参数 `--prompt` 和 `--context`；本章通过 HTTP 请求中的 `promptMode` 和 `contextMode` 选择对应配置，例如 `--prompt=rules` 对应 `"promptMode": "rules"`，`--context=full` 对应 `"contextMode": "full"`。
+图 7：三种方案展示提示词内容的累加关系，效果需要分别运行后核对。图中使用 CLI 参数 `--prompt` 和 `--context`；第 5.1 节通过 HTTP 请求中的 `promptMode` 和 `contextMode` 选择对应配置，例如 `--prompt=rules` 对应 `"promptMode": "rules"`，`--context=full` 对应 `"contextMode": "full"`。
 
 `rules` 一次增加了多项内容，因此比较结果只能先归于整套方案，不能直接归因于某一句规则。`examples` 中的工具结果只是演示文本。
 
@@ -286,27 +301,32 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 
 | 层次 | 天气案例中的检查对象 |
 |---|---|
-| 结构 | 请求和响应字段、工具参数结构、报告是否可读 |
+| 结构 | 请求和响应字段、工具参数结构、报告字段是否可解析 |
 | 行为 | 缺地点时是否追问、ID 是否来自本次检索、是否重复查询 |
 | 结果 | 答案的地点、日期、时区、字段和未知值是否与工具证据一致 |
 
 ![结构检查、行为检查和任务结果核验分别能证明什么](diagram/verification-levels.svg)
 
-图 7：三层检查各有范围。结构合规后仍要看行为，行为合规后仍要核对结果；与预报证据一致，也不代表未来天气一定如此。
+图 8：三层检查各有范围。结构合规后仍要看行为，行为合规后仍要核对结果；与预报证据一致，也不代表未来天气一定如此。
 
 项目中的 `COMPLETED` 只表示模型产生了非空候选，可能是答案，也可能是追问。HTTP 200 和这个状态都不代表事实核验通过。应打开本次报告的 `rounds[].messages` 和 `toolEvents`，把候选与实际调用结果对照，而不是只检查答案是否写了“来源”。
 
 > **实验 3-2：对照天气证据，检查候选回答中的字段错误**
 >
-> 这个实验固定同一地点、目标日期、时区和来源，构造一份降水概率为 `null` 的天气证据，再准备字段一致和含有不同错误的候选回答。证据与候选都直接表示为 Java 数据对象，所有数据均为教学夹具，不来自本次真实天气查询。实验把事实依据保持不变，每次只改变候选中的一个关键字段，观察核验程序能否识别差异。
+> 固定目标地点 `110000`、日期 `2026-10-22`、时区 `Asia/Shanghai`，构造降水概率为 `null` 的证据。这些**教学夹具**是为对照固定好的合成输入；“高德地图”只是来源标签，并非此次接口返回。问题是：字段齐全、类型合法，是否就足以证明答对了？
 >
-> 首先比较未知值的两种处理。候选保留 `null` 时，核验返回空错误列表；把概率改成 `0` 时，返回 `PROBABILITY`，指出候选将未知写成了确定数值。随后分别把候选日期改成相邻一天、换成另一个地点、删除来源或更换时区，程序对应返回 `DATE`、`LOCATION`、`SOURCE` 和 `TIMEZONE`。这些候选即使字段类型合法，也可能与本次证据不一致。
+> **先改变候选，再检查依据。**运行前分别预测：把未知概率填成 `0`、把日期推后一天、将日期和时区同时改错，会得到哪些错误码？随后只改变证据地点，令证据与候选都指向另一个地点，观察“两边相同”为何仍可能不适用于当前任务。程序支持直接传入字段，揭晓后显示实际错误列表，不要求同步修改作者的预期。
 >
-> 核验还要先确认有没有适用的证据。实验将未取得预报表示为证据为空：候选如实返回“不可用”且不附带天气事实时可以通过；仍然给出预报时，返回 `NO_EVIDENCE`。如果证据本身不属于目标日期，则先返回 `EVIDENCE_MISMATCH`，而不是拿这份证据继续评判候选。这两组对照说明，核验既要检查答案，也要检查用来判断答案的依据是否适用于当前任务。
+> **再检查盲区。**`prose-conflict` 保留一致的字段，却附带“降水概率为 0%”的文字；`forged-evidence` 同时伪造证据和候选，令二者字段相同。先预测字段核验器是否能发现，再揭晓。它没有收到自然语言，也没有采集过程的可信证据，因此“字段通过”不足以证明整份回答或来源真实。这是输入和检查范围的限制。
 >
-> 配套程序共包含 12 个合成案例检查，还覆盖已有适用证据却不作答、声称作答却缺少事实，以及概率超出 `0～100` 的输入边界。最后一项在构造数据时就被拒绝，其余案例对照核验返回的错误列表。某个错误案例检查通过，表示程序识别出了预设错误，不表示该候选回答是正确的。
+> <details>
+> <summary>完成预测后再看：判断顺序与错误码</summary>
 >
-> 这个实验主要演示结果层的字段核验：空错误列表只说明当前检查覆盖的字段一致，不能证明未来天气一定如此。它不包含 JSON 解析、自然语言答案提取、工具调用轨迹检查或真实模型评估，也没有接入天气应用的验收流程。完整用例和核验逻辑收录在 [EvidenceCheckLab.java](prompt-labs/EvidenceCheckLab.java) 中，运行方式见 [prompt-labs](prompt-labs/README.md)。
+> `verify` 先检查有没有证据；没有证据却作答返回 `NO_EVIDENCE`。有证据时，地点或日期不属于目标、来源为空，先返回 `EVIDENCE_MISMATCH`；再检查候选状态与完整性，对应 `MISSING_ANSWER / MISSING_FACTS`；最后累计 `LOCATION / DATE / TIMEZONE / SOURCE / PROBABILITY`。未知填零返回 `PROBABILITY`，日期与时区同时改错返回 `[DATE, TIMEZONE]`。概率 `101` 在构造时拒绝，尚未进入核验。
+>
+> </details>
+>
+> 完整实现见 [EvidenceCheckLab.java](prompt-labs/EvidenceCheckLab.java)，操作与预测记录见 [prompt-labs](prompt-labs/README.md)。`--self-check` 单独执行 13 个固定案例：6 个候选字段、4 个证据适用性、2 个候选完整性、1 个输入边界。新增的是“证据地点不属于目标”。“拒绝错误候选”与“案例检查通过”可以同时出现；13 项是程序回归检查数，不是模型正确回答数。
 
 同样，要按检查的实际范围描述结论。`mvn -q -DskipTests compile` 只能证明编译通过。[agent-ready-template](https://github.com/adongwanai/agent-ready-template/blob/main/template/AGENTS.md)中的[入口检查脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/verify-harness.mjs)检查文件与引用，[任务校验脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/validate-specs.mjs)检查示例 JSON 的 Schema；这些结构检查也不能替代业务验收。
 
@@ -314,7 +334,7 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 
 ### 5.1 先预测，再运行
 
-从最容易核对的问题开始：“明天出门需要带伞吗？”问题没有城市。预期行为是追问地点，不自行选择城市，也不声称已经查询到天气。
+先做冒烟测试：“明天出门需要带伞吗？”问题没有城市，期望追问地点、不自行选择城市。这句话已经出现在 `EXAMPLES` 中，因此这一步只检查入口和缺地点处理，不能用来证明示例提升了泛化表现。
 
 在 `agent/zero-to-one/weather-agent` 目录，按 [README](weather-agent/README.md) 配好 JDK 21、Maven，并先编译：
 
@@ -336,7 +356,7 @@ Content-Type: application/json
 }
 ```
 
-保持问题和其他条件不变，只将 `promptMode` 改成 `examples` 再发送。每个 POST 都是独立任务，不接续上一次请求。它会调用模型服务并产生用量；是否调用高德取决于实际行为。用响应中的 `taskId` 打开模块下的 `target/weather-runs/<taskId>/report.json`。先检查答案是否追问，再查看 `toolEvents` 是否发生了未经依据的城市搜索。如果两个版本都符合预期，记为“该样本未观察到差异”。
+保持问题和其他条件不变，只将 `promptMode` 改成 `examples` 再发送。每个 POST 都是独立任务，不接续上一次请求。它会调用模型服务并产生用量；是否调用高德取决于实际行为。用响应中的 `taskId` 打开模块下的 `target/weather-runs/<taskId>/report.json`。先检查答案是否追问，再查看 `toolEvents` 是否发生了未经依据的城市搜索。如果两个版本都符合预期，记为“冒烟测试均通过”。
 
 再用没有出现在示例里的问题检查，例如“周末出门要带雨具吗？”它同时缺地点和明确日期；可以接受的行为是指出需要澄清的必要条件，而不是自行认定周末等于明天。不要只用提示词示例原句判断泛化。
 
@@ -346,7 +366,7 @@ Content-Type: application/json
 
 ![固定任务、模型、参数和工具快照，分别运行提示词 A 与 B，保留轨迹并核对地点、日期、未知值和来源](assets/03-prompt-engineering/controlled-evaluation.png)
 
-图中“同一快照”表示受控比较需要固定的工具数据；地点、日期、未知值和来源则是逐项核对的对象。重复运行时同时保留成功与失败记录，才能检查修改是否改善目标问题、是否带来新的退化。
+图 9：“同一快照”表示受控比较需要固定的工具数据；地点、日期、未知值和来源则是逐项核对的对象。重复运行时同时保留成功与失败记录，才能检查修改是否改善目标问题、是否带来新的退化。
 
 当前项目没有提供真实模型结合冻结天气数据的完整重复评估入口。因此上述请求是**实时探索**，不是严格受控的质量基准。可以沿用前面的三层检查，逐题保留通过项、失败类型和重复次数，不凭某一次更流畅就断言提升。项目 README 另有单次真实运行记录，它能说明该次调用发生了什么，不能代替三种模式的受控质量对照。
 
@@ -354,141 +374,57 @@ Content-Type: application/json
 
 把确认有效的改动和失败样本保留下来，记录对应规则版本、模型与工具条件、验证时间。工具字段或业务规则变化时复核旧示例，源码移动时更新链接，让下一次修改有据可查。
 
-### 5.3 实验 3-3：用线上 DeepSeek 跑通工具调用与提示词对照
+### 5.3 实验 3-3：用线上 DeepSeek 观察工具调用与提示词差异
 
-前面的两个离线程序分别解释采样计算和字段核验。下面把任务交给真实模型：Java 向线上 DeepSeek 发送消息与工具定义，接收模型提出的调用，执行本地工具，再把结果交回模型。最后固定工具数据，比较提示词怎样影响行为和答案。
+前面的天气请求使用实时数据，不便排除预报变化。这里改用固定故障报告，让 Java 客户端调用线上 DeepSeek，接收工具请求、执行本地函数并回填结果，再观察三种提示词面对同一证据时的行为。组织方式借鉴[《深入理解 AI Agent》实验 2-1](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)；工具协议参照 [DeepSeek 官方说明](https://api-docs.deepseek.com/guides/tool_calls/)。
 
-这个实验借鉴了[《深入理解 AI Agent》实验 2-1 的配套项目](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)将模型服务与工具循环连起来观察的方式。本章使用线上模型，客户端和工具在本机运行。工具调用协议以 [DeepSeek 官方说明](https://api-docs.deepseek.com/guides/tool_calls/)为准；模型提出调用后，仍由客户端执行函数并回填结果。
+#### 5.3.1 固定什么，改变什么
 
-#### 5.3.1 先明确实验要验证什么
+实验回到开头的故障摘要，但只取其中**便于程序核验的子集**：`status、incidentId、symptom、impact、recoveryTime` 五个 JSON 字段。它不生成完整的五段式、200 字摘要，也不评价任意自然语言摘要质量。`getIncidentReport(incidentId)` 读取程序内的合成夹具，不查询生产故障或天气服务。
 
-实验沿用开头的故障摘要任务。Java 提供 `getIncidentReport(incidentId)`，读取程序内固定的**教学夹具**。这些编号、现象、影响和时间均为合成材料，不是真实故障记录，也不查询天气接口。
+每项任务都有独立的消息历史、调用 ID 和工具记录。比较时固定模型配置、用例、工具定义与结果、核验契约，以及温度 `0`、`max_tokens=1024`、`thinking=disabled`；改变的是 `BASE → BASE+RULES → BASE+RULES+EXAMPLES` 的系统消息。这是累计方案比较，不能把差异归因于单独一句规则；温度为 0 也不保证线上完全一致。
 
-| 用例参数 | 固定输入或工具结果 | 期望行为 |
+先选用例、写预测，再运行。默认比较 `not-found`，其边界没有出现在示例中；`unknown` 的缺失字段处理与示例相近，适合先熟悉工具往返。
+
+| 用例 | 固定条件 | 运行前记录的问题 |
 |---|---|---|
-| `complete` | 查询 `DEMO-001`；报告有恢复时间 `10:20` | 先查询，再逐字提取现象、影响和恢复时间 |
-| `unknown` | 查询 `DEMO-002`；`recoveryTime=null` | 保留其他事实，恢复时间仍为 JSON `null` |
-| `missing-id` | 用户没有提供编号 | 返回 `NEED_ID`，不调用工具 |
-| `not-found` | 查询 `DEMO-404`；工具返回 `NOT_FOUND` | 说明报告不存在，事实字段为 `null` |
-| `failure` | 查询 `DEMO-503`；工具返回合成的 `UNAVAILABLE` | 说明查询不可用，不补写故障事实 |
+| `complete` | `DEMO-001`，有恢复时间 | 是否先查询，再提取事实？ |
+| `unknown` | `DEMO-002`，恢复时间缺失 | 是否把未知补成了确定值？ |
+| `missing-id` | 用户没有给编号 | 是否表示缺少编号？有没有多余查询？ |
+| `not-found` | `DEMO-404`，工具返回未找到 | 是否凭空补写一份报告？ |
+| `failure` | `DEMO-503`，工具返回不可用 | 是否区分查询失败与取得事实？ |
 
-固定夹具让各次请求面对相同证据，排除了实时天气变化这一因素。模型仍在线生成，工具请求、候选回答和用量由实际响应决定。这里要分开判断：服务能否访问、工具协议是否正确、模型行为与字段是否符合本次要求。
+<details>
+<summary>记录预测后再看：统一验收契约</summary>
 
-#### 5.3.2 准备 Java 入口和模型配置
+`complete` 应提取原字段，恢复时间为 `10:20`；`unknown` 的恢复时间保留 JSON `null`。`missing-id` 返回 `NEED_ID`，其余字段为 `null` 且不调用工具；`not-found / failure` 分别保留 `NOT_FOUND / UNAVAILABLE`、用户编号，其余事实字段为 `null`。四类有编号任务都必须有本次查询依据。
 
-入口是 [DeepSeekPromptLab.java](weather-agent/src/main/java/example/weather/lab/DeepSeekPromptLab.java)。它复用天气模块已有的 Jackson 依赖，以 JDK HTTP 客户端直接展示请求与回填过程；无需新增依赖。独立运行这个 `main()`，不启动 Spring 服务，也不需要高德 Key。
+这是所有版本共用的评价标准；`BASE` 只有共有任务与格式，具体缺口处理规则在 `RULES` 中补充。不能预设 basic 必然失败、examples 必然更好。
 
-在 IDEA 中打开 `weather-agent/pom.xml`，等待 Maven 导入完成，项目 SDK 选择 JDK 21。为 `example.weather.lab.DeepSeekPromptLab` 建立 Application 运行配置，工作目录设为 `agent/zero-to-one/weather-agent`。
+</details>
 
-| 配置位置 | 内容 | 用途 |
-|---|---|---|
-| Environment variables | `DEEPSEEK_API_KEY` | 本次 HTTP 请求的模型凭据；填入自己的值 |
-| Environment variables，可选 | `DEEPSEEK_MODEL` | 默认 `deepseek-flash`，与当前天气模块默认值一致 |
-| Environment variables，可选 | `DEEPSEEK_BASE_URL` | 默认 `https://api.deepseek.com`，也接受官方 `/v1` 基础路径 |
-| Program arguments | 例如 `--mode=tools --case=unknown --prompt=rules` | 选择实验阶段和用例 |
+#### 5.3.2 按四个阶段观察真实轨迹
 
-这个独立入口读取同名环境变量，不加载 `application.yml`；修改 YAML 不会改变它的参数。API Key 仅用于 `Authorization` 请求头，不写进源码、提示词或实验报告。入口将凭据接收地址限定为 DeepSeek 官方 HTTPS 主机。
+入口是 [DeepSeekPromptLab.java](weather-agent/src/main/java/example/weather/lab/DeepSeekPromptLab.java)，使用 JDK 21 和天气模块已有的 Jackson 依赖，不启动 Spring、不需要高德 Key。环境配置、IDEA 与 PowerShell 命令集中在 [实验讲义](prompt-labs/README.md#实验-3-3线上-deepseek-调用与对照)，按以下顺序完成：
 
-也可以在该模块目录的 PowerShell 中运行。先确认当前终端使用 JDK 21，并已配置上述环境变量，再编译、生成运行类路径：
+1. **服务检查。**`--mode=check` 请求模型列表。`CHECKED` 表示取得合法列表；模型未列出时仍为 `passed=false`，先解决访问与配置。
+2. **普通回答。**`--mode=chat` 不注册工具。检查 `runs[0].rounds[0].request.messages` 中 `role=system/user` 两条消息，再读 `response.choices[0].message.content`。可用 `--system` 改变表达要求，问题保持不变；这里只检查正常结束的非空文本，内容质量由读者判断。
+3. **工具往返。**`--mode=tools --case=unknown --prompt=rules`。沿报告确认模型请求编号 → Java 整批预检 → 实际工具事件 → 原 assistant 消息和匹配的 `tool_call_id` 回填 → 最终候选。一次合法工具往返使消息从 2 条增至 4 条；实际轨迹以报告为准。非法批次整体拒绝。
+4. **提示词比较。**`--mode=compare --case=not-found --repeats=1 --predict=你的预测`。读取同目录的 `comparison.md`：它并排列出提示词增加内容、模型/工具次数、执行状态、错误项和实际候选，并保留预测。原始请求与成功响应仍在 `report.json`，可检查到底改变了哪段系统消息。
 
-```powershell
-mvn -q -DskipTests compile dependency:build-classpath '-Dmdep.outputFile=target/prompt-lab-classpath.txt'
-if ($LASTEXITCODE -ne 0) { throw '编译或类路径生成失败。' }
-$labClasspath = 'target/classes;' + (Get-Content -LiteralPath 'target/prompt-lab-classpath.txt' -Raw).Trim()
-```
+工具核验分开检查 `TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS`。没有查询而猜中字段也不通过；JSON 字段顺序或空白不同可以通过结构比较。恢复时间未知必须为 JSON `null`，不能替换成 `0` 或字符串“未提供”；这与开头面向人的文字摘要属于不同交付格式。
 
-下文命令都从该模块目录执行，并使用这个 `$labClasspath`。IDEA 用户则把每条命令末尾的 `--mode=...` 等选项填入 Program arguments，分别运行即可。
+#### 5.3.3 根据结果修正解释
 
-#### 5.3.3 先检查连接，再观察一次普通回答
+输出保存在模块的 `target/prompt-tool-runs/run-<UUID>/`。先看 `status / stopReason` 区分服务失败、程序拒绝与取得候选，再读工具轨迹和字段检查。`CANDIDATE` 仅表示拿到了非空候选，`passed` 才汇总该阶段检查；工具返回 `UNAVAILABLE` 后如实表达缺口，也可以符合任务契约。
 
-先运行：
+比较表的分母只包含已运行任务。三项均通过时，记录“本样本未观察到契约通过情况的差异”，再看答案和调用是否不同；没有差异也是有效观察。`comparison.md` 分别报告文本相等和 JSON 结构相等，避免把排版差异当成事实差异。服务失败后未执行的方案不计成失败，更不能用“至少跑出一次差异”筛选记录。
 
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' -cp $labClasspath example.weather.lab.DeepSeekPromptLab --mode=check
-```
+需要重复观察时，可设 `--repeats=2` 或 `3`。每项任务最多 4 次模型请求、3 次工具执行；一次比较最多 12 次生成请求，3 次重复最多 36 次，每次请求超时 45 秒、不自动重试。调用可能产生线上用量，实际成本查看服务返回的 `usage`；耗时、Token 数及固定顺序的缓存效应不单独证明质量改善。
 
-`check` 只请求 `/models`，核对鉴权是否成功、配置的模型是否出现在返回列表中，不生成回答。成功只能说明这一步通过；还需要实际生成请求检查模型调用。
+再做一组有针对性的修改：固定 `unknown / rules`，保存原报告，只移除“未知值保留 null”规则，**重新编译**后再运行；核对实际请求中的规则已改变。随后用 `not-found` 或 `failure` 检查是否退化。`RULES` 同时参与 examples 拼接，要明确比较对象；恢复源码后也需重新编译。
 
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' -cp $labClasspath example.weather.lab.DeepSeekPromptLab --mode=chat
-```
-
-`chat` 发送一个关于消息角色的固定问题，不注册工具。打开控制台打印的报告路径，检查 `runs[0].rounds[0].request` 中的 `system` 与 `user`，再看 `response.choices[0].message.content`。这一阶段的 `passed=true` 只表示收到正常结束的非空回答，内容是否解释正确仍需人工阅读。
-
-#### 5.3.4 跑通工具请求、执行和结果回填
-
-用缺少恢复时间的任务观察最容易被补写的字段：
-
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' -cp $labClasspath example.weather.lab.DeepSeekPromptLab --mode=tools --case=unknown --prompt=rules
-```
-
-程序注册工具，但不强制模型调用它。如果模型选择了正确的最短路径，通常可以沿以下过程核对报告；实际轮数与结果以本次记录为准：
-
-1. 第一轮 `request.messages` 有规则和问题，`request.tools` 声明 `getIncidentReport`。检查 `response.choices[0].message.tool_calls` 是否请求 `DEMO-002`。此时工具尚待 Java 执行。
-2. Java 整批校验工具名、调用 ID、参数类型、编号白名单和重复查询。合法请求才进入 `toolEvents`，取得包含 `recoveryTime=null` 的教学结果。
-3. 下一轮保留模型原来的 `assistant` 消息，再追加 `role=tool` 的结果。它的 `tool_call_id` 应与上一轮调用 `id` 一致；单次工具往返时消息数由 2 增至 4。
-4. 模型读取结果，生成候选 JSON。核对恢复时间是否仍为 `null`，以及现象和影响是否忠实提取。
-
-这个用例的**期望字段契约**如下，用于核对，不是一次真实运行的输出记录：
-
-```json
-{
-  "status": "ANSWER",
-  "incidentId": "DEMO-002",
-  "symptom": "接口请求超时",
-  "impact": "部分请求失败",
-  "recoveryTime": null
-}
-```
-
-还要检查 `checks` 和 `passed`。程序同时核对实际工具依据和候选字段：即使模型碰巧答对字段，没有调用本次工具也会得到 `TOOL_EVIDENCE`；把 `null` 改成 `"未提供"`、`"0"` 或虚构时间，会违反本实验的固定 JSON 契约，得到 `ANSWER_FIELDS`。这里要求 JSON `null`，与开头面向人的文字摘要使用“未提供”属于不同交付格式。
-
-把 `--case=unknown` 分别改为表中的其他四项，先写下预期，再运行核对。`failure` 模拟的是工具返回失败；它不等于 DeepSeek 请求失败。模型服务返回 HTTP 错误时，报告记录 `HTTP_401`、`HTTP_402`、`HTTP_429` 等状态，并停止本次调用。
-
-#### 5.3.5 固定任务，对照三种提示词
-
-在同一用例上分别使用基础契约、增加规则、再增加示例的版本：
-
-```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' -cp $labClasspath example.weather.lab.DeepSeekPromptLab --mode=compare --case=unknown --repeats=1
-```
-
-`compare` 依次运行 `basic`、`rules`、`examples`。它们属于本实验自己的提示词，内容保存在 `DeepSeekPromptLab.java`，与天气应用的同名模式分别维护。三者共享任务与 JSON 输出契约，后两者按组增加证据规则、停止条件和演示；每次任务重新创建消息历史。
-
-打开同一份报告，按 `runs[]` 逐项记录：
-
-| 观察对象 | 在报告中查看 | 怎样解释 |
-|---|---|---|
-| 实际输入 | `promptMode`、`rounds[].request` | 确认变化的是预期规则，问题和工具保持一致 |
-| 工具行为 | `toolEvents`、`stopReason` | 是否查询正确编号，是否重复调用或被程序拒绝 |
-| 字段结果 | `answer`、`checks`、`passed` | 是否有本次依据，字段是否满足固定抽取契约 |
-| 实际用量 | `rounds[].response.usage` | 服务返回什么就记录什么，未返回时不按字数补算 |
-| 时间成本 | `rounds[].elapsedMs`、`elapsedMs` | 前者为一轮完整 HTTP 请求耗时，后者为整项任务耗时 |
-
-若三者均通过，就记录“该用例未观察到差异”；不能为了证明示例有效而只保留失败的基础版本。需要重复观察时，把 `--repeats` 改为 `2` 或 `3`。默认一次比较最多 12 次生成请求，重复 3 次最多 36 次；实际次数取决于模型行为，均可能产生线上用量。每轮最多输出 1024 Token，请求超时为 45 秒，不自动重试；鉴权、限流或网络异常会停止整次比较。
-
-累计方案比较不能单独证明某条规则的贡献。进一步练习时，可以复制同一版本，只移除“未知值保留 null”这一条，再用相同用例与评价条件重复观察。固定工具数据和温度仍不能保证线上生成完全一致，也不能冻结服务商内部的模型更新。
-
-#### 5.3.6 检查失败、解释结论并继续练习
-
-每次运行保存到模块下的 `target/prompt-tool-runs/run-<UUID>/report.json`。工具任务的 `CANDIDATE` 表示收到非空候选；`passed` 只判断当前有限的行为与字段契约。未通过时进程以非零状态退出，报告仍会保留。
-
-| 错误码 | 先检查什么 |
-|---|---|
-| `MODEL_NOT_LISTED` | Key 可访问的模型列表与 `DEEPSEEK_MODEL` 是否一致 |
-| `HTTP_401`、`HTTP_402`、`HTTP_429` | 当前进程的凭据、账户状态或服务限流 |
-| `NETWORK_ERROR`、`TIMEOUT` | 网络与服务状态；本程序没有自动重试 |
-| `INVALID_TOOL_CALL`、`INVALID_TOOL_ARGUMENTS` | 工具名、调用 ID、JSON 参数类型与允许的演示编号 |
-| `DUPLICATE_QUERY`、`TOOL_BUDGET` | 模型是否重复查询，是否在有限预算内结束 |
-| `INCOMPLETE_ANSWER` | 是否达到输出限制、返回空内容或以异常原因结束 |
-| `TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS` | 工具依据、纯 JSON 格式与候选字段分别是否合格 |
-
-继续练习时，先保持工具和用例不变，只修改一条规则；再选择没有放进示例的用例检查退化。也可以修改 `EXAMPLES`，让示例故意把未知值写成零，观察它与规则冲突时的实际结果，再恢复原示例。无论结果如何，都保留对应输入、候选和错误类型。
-
-本实验没有流式输出；完整 HTTP 耗时不能当作首 Token 延迟，也不能仅凭第二次更快就断言缓存命中。它验证的是固定教学任务中的提示词与工具协议，不代表生产故障摘要质量或真实天气准确率。
-
-配套的[本机协议检查](weather-agent/src/test/java/example/weather/lab/DeepSeekPromptLabProtocolCheck.java)使用回环 HTTP 替身验证客户端。运行方法与验证边界见 [prompt-labs](prompt-labs/README.md)；替身通过只能证明所覆盖的代码路径，线上模型的表现需要用自己的实际报告核对。
+常见错误码与完整运行步骤见[实验讲义](prompt-labs/README.md#失败时怎样定位)。[本机协议检查](prompt-labs/VALIDATION.md)使用回环替身验证客户端，不表示线上提示词效果。本次修订环境没有配置 DeepSeek Key，尚未形成这套故障任务的真实线上对照记录；没有 Key 可先完成离线回放与前两个实验，不能把天气历史或替身输出冒充本实验的线上结果。
 
 ## 6. 写完提示词，再检查四件事
 
@@ -500,6 +436,8 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8'
 当对话变长、项目资料和工具结果增多，问题会从“这条规则怎样写”进一步变成“这次该提供哪些信息”。下一篇[上下文工程](04-context-engineering.md)继续讨论这个问题。
 
 ## 参考资料
+
+下列清单列主要来源；其余资料在对应段落就近链接。
 
 - [Agent 资源汇总](https://tyron.me/posts/agent-resources)：本系列参考资源入口，具体引用以各原始资料为准。
 - [卡码笔记：提示词工程](https://notes.kamacoder.com/llm/app/prompt_engineering.html)和[示例、推理与反思](https://notes.kamacoder.com/llm/app/prompt_fewshot_cot_reflection.html)：任务组织与复杂任务拆解。
@@ -513,4 +451,5 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8'
 - [centminmod：项目规则与记忆配置](https://github.com/centminmod/my-claude-code-setup/blob/master/CLAUDE.md)：长期资料按用途组织、按需读取的实践。
 - [agent-ready-template](https://github.com/adongwanai/agent-ready-template)：规则、任务、契约、验证与证据的组织示例。
 - [高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)：当前天气工具的数据来源与接口字段。
+- [DeepSeek：工具调用](https://api-docs.deepseek.com/guides/tool_calls/)与[参考书实验 2-1 配套项目](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)：工具循环协议与实验组织。
 - 项目实现：[weather-agent](weather-agent/README.md) 的天气工具与消息循环、[prompt-labs](prompt-labs/README.md) 的两个离线实验和线上 DeepSeek 工具调用实验。

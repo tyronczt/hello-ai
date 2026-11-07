@@ -11,7 +11,7 @@
 | 00 | [学习资料](00-agent-resources.md) | 按问题查询的资源索引 |
 | 01 | [什么是 Agent](01-what-is-agent.md) | 保留现有概念篇，区分问答、Workflow 与 Agent |
 | 02 | [用 Java 做第一个 Agent](02-first-java-agent.md) | 保留已经实现的文档助手、四阶段练习与 HTTP 入口 |
-| 03 | [提示词工程](03-prompt-engineering.md) | 从条件生成到任务契约、采样、证据核验与消融评估，穿插七项 Java 实践 |
+| 03 | [提示词工程](03-prompt-engineering.md) | 从任务表达与条件生成，到采样、证据核验和线上提示词观察，包含三个编号实验 |
 | 04 | [上下文工程](04-context-engineering.md) | 从 Chat Template、KV Cache 到提示注入、Skills、状态与压缩，穿插八个 Java 实践 |
 | 05 | [用户记忆与知识库](05-user-memory-knowledge-base.md) | 回到文档助手，研究跨会话信息、检索、来源与更新；长期记忆仍是后续实现 |
 
@@ -22,7 +22,7 @@
 | [first-agent](first-agent/README.md) | 原 HTTP、--guided、--context-lab 等入口 | 固定教学文档、手写循环与旧版文档上下文实验 |
 | [weather-agent](weather-agent/README.md) | --weather-check、--ask=... | 真实城市检索与天气查询，三种提示词、三种上下文策略、逐轮报告 |
 
-旧路径 [03-context-engineering.md](03-context-engineering.md) 保留导航说明。上下文篇复用 first-agent 的消息、Skills 与压缩实验，并新增纯 JDK 的 [KV Cache 数值实验](context-labs/README.md)；各项目的验证结果分别说明，不迁移为其他案例的成绩。当前学习顺序以上表为准。
+上下文工程见 [第 04 篇](04-context-engineering.md)，复用 first-agent 的消息、Skills 与压缩实验，并新增纯 JDK 的 [KV Cache 数值实验](context-labs/README.md)；各项目的验证结果分别说明，不迁移为其他案例的成绩。当前学习顺序以上表为准。
 
 ## 2、把每篇写成一个能够解释的问题
 
@@ -43,7 +43,7 @@
 
 提示词篇使用同一个问题、工具集合和上下文策略，对照 basic、rules、examples。观察地点缺失时是否追问、天气失败时是否说明缺口、建议是否与返回依据一致。三种模式共享事实与权限边界，改变的是处理流程和示例。
 
-提示词篇另有两个无需密钥的 [Java 小实验](prompt-labs/README.md)：用人工 logits 解释温度与 top-p，用合成观察解释字段核验。22 项自检验证计算与核验逻辑，不代表真实模型通过了质量评估。三种累计提示词模式属于方案对照，严格的单因素消融需另行控制变化范围。
+提示词篇的 [三个 Java 实验](prompt-labs/README.md)依次观察采样参数、字段核验边界和线上 DeepSeek 提示词差异。前两个无需密钥，23 项固定自检验证计算与核验逻辑；第三个需要模型 Key。自检不是模型质量评估，累计方案比较也不能直接归因于单条规则。
 
 上下文篇固定提示词，对照 full、state、compact。逐轮检查消息，解释工具结果怎样进入下一次请求；再检查状态更新与完整批次压缩。短任务没有触发压缩是正常结果，不为了显示压缩效果诱导模型无意义地重复查天气。
 
@@ -75,10 +75,10 @@
 | [AI Agent Guide](https://github.com/fuzhengwei/ai-agent-guide) | 从基础到工具、运行时、协作和工程化的范围与递进；以[实际导航](https://github.com/fuzhengwei/ai-agent-guide/blob/main/js/main.js)核对主题 |
 | [深入理解 AI Agent](https://bojieli.github.io/ai-agent-book/astro/) | 问题驱动的机制解释、实验设计与边界讨论，不照搬其目录和实验结果 |
 | [Spring AI 工具文档](https://docs.spring.io/spring-ai/reference/api/tools.html) | 结合本项目锁定版本核对工具注册、应用控制执行与历史回填 |
-| [Open-Meteo 天气文档](https://open-meteo.com/en/docs)与[城市检索文档](https://open-meteo.com/en/docs/geocoding-api) | 天气字段、时区、单位、候选地点与请求契约 |
+| [高德天气查询](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)与[行政区域查询](https://lbs.amap.com/api/webservice/guide/api/district) | 当前城市检索、预报字段与请求契约；适配语义以项目实现为准 |
 | [学习资料篇](00-agent-resources.md) | 按当前问题补充项目、课程与原始资料 |
 
-天气项目采用 Open-Meteo 的非商业免费接口，不需要天气服务密钥；模型服务仍需单独配置。使用边界、调用限制和署名要求见[官方定价](https://open-meteo.com/en/pricing)与[许可说明](https://open-meteo.com/en/licence)。
+天气项目当前采用高德 Web 服务，需要通过 JVM 参数 `-Damap.api.key=你的Key` 配置天气服务凭据；模型服务另配 `DEEPSEEK_API_KEY`。具体配置与验证边界见[天气模块说明](weather-agent/README.md)。
 
 ## 6、怎样记录学习结果
 
@@ -86,4 +86,4 @@
 
 本系列区分四类证据：主代码编译、使用替身的本机协议检查、真实外部工具接入、真实模型质量评估。前三项不能自动推出第四项通过。报告中的 COMPLETED 仅表示得到候选回答，答案仍需核对。
 
-当前天气项目已完成编译、打包、41 项本机断言以及 Java 程序对真实 Open-Meteo 的连通检查；尚未完成真实模型质量评估。第 05 篇中的长期记忆与新检索策略仍按正文标记的范围逐步实现。
+天气模块 README 保留了 2026-10-26 高德迁移后的编译、打包与 43/153/48/423/30 项分类检查记录，以及一次真实模型调用回放；这些是各次运行的历史证据，不是本轮重新执行的结果，也不构成提示词质量评估。提示词实验本轮检查另见 [VALIDATION.md](prompt-labs/VALIDATION.md)。第 05 篇中的长期记忆与新检索策略仍按正文标记的范围逐步实现。

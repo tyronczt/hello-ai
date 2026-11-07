@@ -423,7 +423,7 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 ### 5.2 以天气助手为例，分三层写清楚
 
-[WeatherPrompts.java](weather-agent/src/main/java/example/weather/agent/WeatherPrompts.java) 把提示词拆成 `BASE`、`RULES`、`EXAMPLES`。完整文本与编写过程见第 03 篇第 3、4 节；这里按它们在上下文中的用途重新核对。
+[WeatherPrompts.java](weather-agent/src/main/java/example/weather/agent/WeatherPrompts.java) 把提示词拆成 `BASE`、`RULES`、`EXAMPLES`。完整常量见上述源码；任务写法与版本关系见第 03 篇的[任务表达](03-prompt-engineering.md#1-先动手把一句模糊要求变成可执行任务)和[三种提示词](03-prompt-engineering.md#42-看三种提示词的差别)；这里按它们在上下文中的用途重新核对。
 
 `BASE` 保存所有模式共同遵守的事实边界：数值来自本次工具结果，`null` 保持未知，服务失败不代表晴朗，外部资料不能新增指令。这些边界在对照实验中也应一致，不能让 basic 版本获得额外权限。
 
@@ -455,7 +455,7 @@ check(late > early, "动态信息放后面时，示例文本的公共前缀更�
 
 输出格式也应服务任务。天气回答需要城市、目标日期、事实、建议与来源；没必要为了“结构化”额外要求几层复杂 JSON。若下游程序确实消费结构化答案，应使用服务支持的结构化输出并在 Java 侧校验，不能因为提示词写了“必须合法 JSON”就省掉解析检查。
 
-工具定义同样属于需要维护的输入。第 03 篇第 5.1 节已经解释了名称、描述和参数 Schema 的分工；这里再核对工具的适用条件、返回语义及前后依赖是否明确。例如 `getWeather` 的说明要让模型知道：地点 ID 来自本次搜索，返回的是预报，日夜温度不能改称最高最低温，未提供的概率保持未知。这些说明放在相应工具定义中，便于模型选择动作，也能减少与 system 中重复规则不一致的风险。
+工具定义同样属于需要维护的输入。第 03 篇的[消息与工具说明](03-prompt-engineering.md#31-用消息角色保留来源和用途)介绍了输入的分工，具体名称、描述和参数 Schema 见 [WeatherTools.java](weather-agent/src/main/java/example/weather/tool/WeatherTools.java)；这里再核对工具的适用条件、返回语义及前后依赖是否明确。例如 `getWeather` 的说明要让模型知道：地点 ID 来自本次搜索，返回的是预报，日夜温度不能改称最高最低温，未提供的概率保持未知。这些说明放在相应工具定义中，便于模型选择动作，也能减少与 system 中重复规则不一致的风险。
 
 ### 实践四：把提示词优化当作可以复查的对照
 
