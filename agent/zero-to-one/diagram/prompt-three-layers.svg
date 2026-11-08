@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+<title id="title">写提示词，其实在回答三个不同层次的问题</title><desc id="desc">1.5 管信息怎样组织，2.5 管要不要让模型多想几步，5.4 管结果怎样才算过关；每一层都要单独检查，上一层做对不会自动让下一层也做对。</desc>
+<defs><marker id="blue-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#3f6e98" /></marker></defs>
+<style>text{font-family:'Microsoft YaHei','Noto Sans SC','PingFang SC',sans-serif;fill:#18334e}.title{font-size:34px;font-weight:700}.subtitle{font-size:19px;fill:#526b83}.heading{font-size:23px;font-weight:700}.body{font-size:19px;fill:#18334e}.small{font-size:17px;fill:#526b83}.tiny{font-size:15px;fill:#526b83}.label{font-size:19px;font-weight:600;fill:#18334e}.tag{font-size:16px;font-weight:700;fill:#3f6e98}</style>
+<rect width="1440" height="900" fill="#f4f7fb" />
+<text x="45" y="64" class="title" text-anchor="start">写提示词，其实在回答三个不同层次的问题</text>
+<text x="45" y="102" class="subtitle" text-anchor="start">分清层次，就不会把“换个模板缩写”当成“回答更准”。</text>
+
+<rect x="45" y="165" width="420" height="440" rx="14" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.5" />
+<text x="67" y="207" class="heading" text-anchor="start">01  信息怎样组织</text>
+<text x="67" y="243" class="tag" text-anchor="start">1.5  结构化提示词</text>
+<line x1="67" y1="263" x2="443" y2="263" stroke="#b4c6d7" stroke-width="1" />
+<text x="67" y="300" class="body" text-anchor="start">给谁看、依据什么材料</text>
+<text x="67" y="336" class="body" text-anchor="start">缺了怎么办、按什么格式交</text>
+<text x="67" y="372" class="body" text-anchor="start">什么时候算做完、什么时候停</text>
+<line x1="67" y1="402" x2="443" y2="402" stroke="#b4c6d7" stroke-width="1" />
+<text x="67" y="440" class="label" text-anchor="start">能回答：有没有漏项</text>
+<text x="67" y="478" class="small" text-anchor="start">不能回答：写得对不对、答得准不准</text>
+<text x="67" y="550" class="small" text-anchor="start">填空表是给自己看的检查表，</text>
+<text x="67" y="578" class="small" text-anchor="start">不是质量保证；别为了填满而填满。</text>
+
+<rect x="510" y="165" width="420" height="440" rx="14" fill="#e7eff7" stroke="#b4c6d7" stroke-width="1.5" />
+<text x="532" y="207" class="heading" text-anchor="start">02  要不要多想几步</text>
+<text x="532" y="243" class="tag" text-anchor="start">2.5  高阶优化方法</text>
+<line x1="532" y1="263" x2="908" y2="263" stroke="#b4c6d7" stroke-width="1" />
+<text x="532" y="300" class="body" text-anchor="start">是改一句话，还是改调用方式</text>
+<text x="532" y="336" class="body" text-anchor="start">先查这一代模型的专用指南</text>
+<text x="532" y="372" class="body" text-anchor="start">每次只加一个技巧并写下预期</text>
+<line x1="532" y1="402" x2="908" y2="402" stroke="#b4c6d7" stroke-width="1" />
+<text x="532" y="440" class="label" text-anchor="start">能回答：该不该加这一层</text>
+<text x="532" y="478" class="small" text-anchor="start">不能回答：加了之后是否真的变好</text>
+<text x="532" y="550" class="small" text-anchor="start">多一次调用就多一份费用、</text>
+<text x="532" y="578" class="small" text-anchor="start">延迟和上下文，要有停止条件。</text>
+
+<rect x="975" y="165" width="420" height="440" rx="14" fill="#f6f9fc" stroke="#b4c6d7" stroke-width="1.5" />
+<text x="997" y="207" class="heading" text-anchor="start">03  结果怎样才算过关</text>
+<text x="997" y="243" class="tag" text-anchor="start">5.4  给提示词打分</text>
+<line x1="997" y1="263" x2="1373" y2="263" stroke="#b4c6d7" stroke-width="1" />
+<text x="997" y="300" class="body" text-anchor="start">先把成功标准与固定题目写下来</text>
+<text x="997" y="336" class="body" text-anchor="start">留出没进过提示词的题</text>
+<text x="997" y="372" class="body" text-anchor="start">同一输入配对比对，保留失败样本</text>
+<line x1="997" y1="402" x2="1373" y2="402" stroke="#b4c6d7" stroke-width="1" />
+<text x="997" y="440" class="label" text-anchor="start">能回答：这次改动有没有变好</text>
+<text x="997" y="478" class="small" text-anchor="start">不能回答：换个模型是否仍然更好</text>
+<text x="997" y="550" class="small" text-anchor="start">自检全绿只说明结构合规，</text>
+<text x="997" y="578" class="small" text-anchor="start">不等于回答更准确。</text>
+
+<path d="M465 630H500" fill="none" stroke="#3f6e98" stroke-width="2" marker-end="url(#blue-arrow)" />
+<path d="M930 630H965" fill="none" stroke="#3f6e98" stroke-width="2" marker-end="url(#blue-arrow)" />
+
+<rect x="45" y="675" width="1350" height="180" rx="14" fill="#ffffff" stroke="#b4c6d7" stroke-width="1.5" />
+<text x="67" y="720" class="heading" text-anchor="start">上一层做对，不会自动让下一层也做对</text>
+<text x="67" y="762" class="body" text-anchor="start">1.5 填齐格子 ≠ 2.5 选对了方法；2.5 多调几次 ≠ 5.4 证明它更好。三层都要单独检查。</text>
+<text x="67" y="805" class="small" text-anchor="start">本篇只做到“把任务写清楚”和“能自己复核”；模板系统、版本管理与分区缓存是复杂 Agent 才需要的工程手段，见第 04 篇。</text>
+</svg>

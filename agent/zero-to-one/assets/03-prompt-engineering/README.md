@@ -1,13 +1,17 @@
 # 提示词工程配图与制作说明
 
-本目录保存[第 03 篇](../../03-prompt-engineering.md)的既有素材与制作文件。当前正文共使用 9 张图：7 张位于 [diagram](../../diagram/) 的 SVG，以及本目录的两张 PNG。图号按正文出现顺序排列。
+本目录保存[第 03 篇](../../03-prompt-engineering.md)的既有素材与制作文件。当前正文共使用 11 张图：9 张位于 [diagram](../../diagram/) 的 SVG，以及本目录的两张 PNG。图号按正文出现顺序排列。
 
 | 当前使用的素材 | 正文位置 | 解释范围 |
 |---|---|---|
 | [prompt-versions.png](prompt-versions.png) | 4.2，图 7 | BASE、RULES、EXAMPLES 的累计关系；图中 CLI 参数需映射到 5.1 的 HTTP 字段 |
 | [controlled-evaluation.png](controlled-evaluation.png) | 5.2，图 9 | 固定条件、保留记录、核对结果；不表示天气入口已实现冻结快照评估 |
+| [prompt-injection-awareness.svg](../../diagram/prompt-injection-awareness.svg) | 第 6 章，图 10 | 外部资料里的命令式文字只应被当成被读到的内容；来源标记不是安全沙箱，权限由程序兜底 |
+| [prompt-three-layers.svg](../../diagram/prompt-three-layers.svg) | 第 6 章，图 11 | 1.5 / 2.5 / 5.4 分别对应信息组织、方法选择、结果核验三个层次；上一层做对不自动代表下一层做对 |
 
 当前图 1～6、图 8 对应 diagram 中的任务流程、任务契约、自回归生成、注意力、长期规则、天气工具边界与三层核验图。图 3 是生成总览，图 4 展开模型计算。
+
+图 10、图 11 是本轮新增，仅提供 SVG 源，正文直接引用 SVG，未导出 `@2x.png` 固定渲染结果；两张图均为教学简化，图中命令式文字是示意，不是真实攻击样本或真实提示词内容。
 
 ## 素材依据与历史边界
 
