@@ -1,22 +1,31 @@
 # Javaer 转 Agent：提示词工程——先学会表达任务，再理解模型如何响应
 
-你让 AI“帮我总结一份故障报告”，它回了三段挺顺的话，可影响范围没写，恢复时间也没提。你再补一句“写得更专业”，多半还是老样子：模型不知道这份摘要给谁看、哪些信息必须留、报告里没写的该怎么办。
+在大模型应用中，**提示词（Prompt）是提供给模型、用于引导它完成任务的输入内容。**它可以是一个问题，例如“Java 中的线程和进程有什么区别？”，也可以是一条指令，例如“把下面这段文字翻译成英文”，还可以是一份包含背景、材料和交付要求的完整任务说明。中文里虽然叫“提示词”，实际使用时可以写成一句话、几个段落，或带有分区的文本。[Kimi 的入门指南](https://www.kimi.com/help/new-user-guide/what-is-prompt)也从这类日常输入解释 Prompt。
 
-换个说法，把这些条件一次说清：
+一份提示词里，可以同时放入**要做的事、完成任务所需的资料，以及对结果的要求**。例如，“把群通知整理成参加活动前的清单”是任务指令，后面粘贴的通知是待处理材料，“给准备参加活动的人看、保留原始时间、按事项列出”则说明受众、约束和格式。需要时，还可以给出期望的回答示例。这些内容分别告诉模型处理什么、依据什么、怎样交付；材料用于提供事实，指令用于说明怎样使用材料。[AWS 的提示词说明](https://aws.amazon.com/cn/what-is/prompt/)也按指令、上下文、输入数据、输出格式等部分解释其构成。
+
+在聊天界面里，最直观的提示词就是你发出的那条消息；在应用中，程序还可能把固定规则、选取的对话历史和检索到的资料一起提供给模型。因而，分析一次回答时，要看模型实际收到了哪些内容，而不只看输入框里的那句话。后文第 3 节会进一步区分这些内容的来源和消息角色。本篇先围绕文本提示词展开。
+
+先看一个日常场景：群里发来一条周末活动通知，你想弄清楚几点去、在哪里集合、要不要提前报名、该带什么。如果只对 AI 说“帮我总结一下这条通知”，它可能写成一段活动介绍，却没有列出参加前要做的准备。
+
+可以把要求改成下面这样。通知是为演示编写的，不对应真实活动：
 
 ```text
-请面向值班工程师总结下面的故障报告。
-按“现象、影响范围、原因、恢复过程、待确认问题”组织。
-只使用报告里提供的信息；未提及的内容写“未提供”，不要推测。
+请把下面的群通知整理成一份我参加活动前要看的清单。
+列出活动时间、集合地点、报名方式、需要携带的物品和待确认事项。
+只依据通知内容；结束时间、费用等未说明的信息标为“未提供”，不要补写。
 输出不超过 200 字。
 
-报告：
-<report>
-……在这里粘贴报告……
-</report>
+通知：
+<notice>
+周日下午举办旧书交换活动，14:00 开始，请于 13:50 到社区活动室集合。
+想参加的请在周五晚前在群里接龙报名，并带上几本闲置书。
+</notice>
 ```
 
-这段提示词交代了四件事：给谁看、依据什么材料、缺了怎么办、按什么格式交。提示词的作用就在这里：**把任务及其条件说清楚，让模型知道这次要依据什么、怎样回答。**至于效果，得用实际结果检查，不能只看提示词写得漂不漂亮。
+这段提示词把任务、使用场景、材料、缺失信息的处理办法和输出要求放在了一起。模型得到的任务更具体了：为参加活动做准备，依据这条通知列清单，没写的事项标明缺失。至于它有没有照做，还得拿清单与原通知核对，检查有没有漏掉报名要求、混淆开始与集合时间，或补出通知没写的费用。
+
+**围绕具体任务设计提示词，再根据实际输出测试、修改和比较，就是提示词工程（Prompt Engineering）。**提示词是本次提供给模型的输入；提示词工程是持续改进这些输入的方法与过程。[Google Cloud 的概览](https://cloud.google.com/discover/what-is-prompt-engineering?hl=zh-CN)也将其重点放在提示的设计与优化上。对这份活动清单而言，下一步应记录遗漏了什么、补充哪条要求后是否改善，并检查有没有引入新的问题。
 
 下面先把任务说清楚，再解释 Token、逐步生成与采样。第 1 节末尾的 1.5 把讲过的条件装进填空表，第 2 节末尾的 2.5 看“让模型多想几步”有哪些做法、什么时候别用；第 3 节区分应用消息和编码 Agent 的长期规则，第 4 节沿 [weather-agent](weather-agent/README.md) 追踪执行，第 5 节用固定数据观察提示词差异，末尾的 5.4 再回答“怎样算更好”。两个离线实验帮助理解计算和核验，调用线上模型服务的实验才直接换提示词做对照。本篇的例子都能在本机读，不要求 weather-agent 对外发布。
 
@@ -28,7 +37,7 @@
 
 **一句话先说清：先想好要交什么，再倒推该交代什么。**
 
-开头那份故障摘要，可以照着图 1 一项项问：给谁看？用什么材料？哪些内容不能自己补？按什么方式输出？最后拿什么核对？
+群通知说明了任务条件怎样影响回答。下面回到开发场景，用故障摘要继续练习：面向值班工程师，依据故障报告，按现象、影响范围、原因、恢复过程和待确认问题组织，不超过 200 字。照着图 1 一项项问：给谁看？用什么材料？哪些内容不能自己补？按什么方式输出？最后拿什么核对？
 
 ![提示词从任务描述到结果核验的流程](diagram/prompt-workflow.svg)
 
@@ -116,7 +125,7 @@
 | 约束 | 缺信息、有冲突、不许推断时怎么办 | 1.2 / 1.4 |
 | 输出 | 长什么样、多少字、什么格式 | 1.1 / 1.4 |
 
-**最省事的三格版**，有人叫 RTF：角色、任务、格式。套到开头那份故障摘要上：
+**最省事的三格版**，有人叫 RTF：角色、任务、格式。套到本节的故障摘要上：
 
 ```text
 # 角色
@@ -133,9 +142,9 @@
 <report>……</report>
 ```
 
-对比 1.1 那段，其实只多了三行标题。**标题不是给模型看的魔法，是给自己看的检查表**：写完扫一眼，就知道有没有漏掉读者、材料和输出要求。“你是给值班工程师写交接摘要的助手”只回答“写给谁”，不保证答得更准——按 [Anthropic 2026 提示词指南](https://claude.com/blog/best-practices-for-prompt-engineering)的口径，重角色设定在新模型上已经没那么必要了。
+同一个故障摘要任务，增加这三行标题后，角色、任务与格式就更容易分别检查。**标题不是给模型看的魔法，是给自己看的检查表**：写完扫一眼，就知道有没有漏掉读者、材料和输出要求。“你是给值班工程师写交接摘要的助手”只回答“写给谁”，不保证答得更准——按 [Anthropic 2026 提示词指南](https://claude.com/blog/best-practices-for-prompt-engineering)的口径，重角色设定在新模型上已经没那么必要了。
 
-**六套缩写，看一眼就够。** 参考材料里列了一串框架名，它们只是填空顺序不同，最后都回到角色、任务、上下文、输出这四件事：
+**六套缩写，看一眼就够。** 下面把几种框架并排放在一起，它们的填空顺序不同，仍可以按角色、任务、上下文、输出这些要素检查：
 
 | 名字 | 多管了什么 | 什么时候用得上 |
 | --- | --- | --- |
@@ -170,7 +179,7 @@
 
 两版并排看：删掉的是重复的核查话术和大段示例，留下的是目标、约束、成功标准和输出形状。这不是“越短越好”，而是**按这一代模型的指南决定写多少**；别把任何一版当成通用模板。三家官方口径本来就不一致（见 2.5），拿不准时先查你正在用的那一代的文档。
 
-**格式交给接口，而不是靠喊“必须输出 JSON”。** 如果输出是给程序读的，[OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)与 [Gemini 的 structured output](https://ai.google.dev/gemini-api/docs/prompting-strategies)都建议用 API 级的 `json_schema` 加 `strict: true` 约束字段和枚举。自然语言里反复强调格式，只保证“看起来像 JSON”，不保证字段齐全。**本项目没有实现这一层**：`weather-agent` 目前还是用自然语言加 `verify` 字段核验。参考材料里那份很长的 [nof1 案例](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/69637fee51b1440001126b8a)是“用超长提示词硬约束输出”的旧范式，读来对照可以，别照抄。
+**格式交给接口，而不是靠喊“必须输出 JSON”。** 如果输出是给程序读的，[OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)与 [Gemini 的 structured output](https://ai.google.dev/gemini-api/docs/prompting-strategies)都建议用 API 级的 `json_schema` 加 `strict: true` 约束字段和枚举。自然语言里反复强调格式，只保证“看起来像 JSON”，不保证字段齐全。**本项目没有实现这一层**：`weather-agent` 目前还是用自然语言加 `verify` 字段核验。
 
 **长材料放哪，也要查指南。** 长文档置顶、问题放末尾是 [Claude 提示词文档](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)的写法；[Gemini 提示词文档](https://ai.google.dev/gemini-api/docs/prompting-strategies)让 context 在前、具体指令放末尾，但全局约束放开头；[OpenAI 缓存文档](https://platform.openai.com/docs/guides/prompt-caching)聊的是另一件事——稳定前缀在前、每次都变的内容在后，为的是复用缓存。一个是“别让模型看漏”，一个是“别重复算”，别混成“一律放开头”。
 
@@ -552,7 +561,7 @@ Content-Type: application/json
 
 **一句话先说清：这一节只测能被程序核对的五个字段。**
 
-实验回到开头的故障摘要，但只取其中**便于程序核验的子集**：`status、incidentId、symptom、impact、recoveryTime` 五个 JSON 字段。它不生成完整的五段式、200 字摘要，也不评价任意自然语言摘要质量。`getIncidentReport(incidentId)` 读取程序内的合成夹具，不查询生产故障或天气服务。
+实验沿用第 1 节的故障摘要场景，但只取其中**便于程序核验的子集**：`status、incidentId、symptom、impact、recoveryTime` 五个 JSON 字段。它不生成完整的五段式、200 字摘要，也不评价任意自然语言摘要质量。`getIncidentReport(incidentId)` 读取程序内的合成夹具，不查询生产故障或天气服务。
 
 每项任务都有独立的消息历史、调用 ID 和工具记录。比较时固定模型配置、用例、工具定义与结果、核验契约，以及温度 `0`、`max_tokens=1024`、`thinking=disabled`；改变的是 `BASE → BASE+RULES → BASE+RULES+EXAMPLES` 的系统消息。这是累计方案比较，不能把差异归因于单独一句规则；温度为 0 也不保证线上完全一致。
 
@@ -586,7 +595,7 @@ Content-Type: application/json
 3. **工具往返。**`--mode=tools --case=unknown --prompt=rules`。沿报告确认模型请求编号 → Java 整批预检 → 实际工具事件 → 原 assistant 消息和匹配的 `tool_call_id` 回填 → 最终候选。一次合法工具往返使消息从 2 条增至 4 条；实际轨迹以报告为准。非法批次整体拒绝。
 4. **提示词比较。**`--mode=compare --case=not-found --repeats=1 --predict=你的预测`。读取同目录的 `comparison.md`：它并排列出提示词增加内容、模型/工具次数、执行状态、错误项和实际候选，并保留预测。原始请求与成功响应仍在 `report.json`，可检查到底改变了哪段系统消息。
 
-工具核验分开检查 `TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS`。没有查询而猜中字段也不通过；JSON 字段顺序或空白不同可以通过结构比较。恢复时间未知必须为 JSON `null`，不能替换成 `0` 或字符串“未提供”；这与开头面向人的文字摘要属于不同交付格式。
+工具核验分开检查 `TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS`。没有查询而猜中字段也不通过；JSON 字段顺序或空白不同可以通过结构比较。恢复时间未知必须为 JSON `null`，不能替换成 `0` 或字符串“未提供”；这与第 1 节面向人的故障摘要属于不同交付格式。
 
 #### 5.3.3 根据结果修正解释
 
@@ -660,7 +669,7 @@ Content-Type: application/json
 
 ## 参考资料
 
-下列清单列主要来源；其余资料在对应段落就近链接。
+下列清单仅列公开资料；其余公开来源在对应段落就近链接。项目实现使用仓库内的相对链接。
 
 - [Agent 资源汇总](https://tyron.me/posts/agent-resources)：本系列参考资源入口，具体引用以各原始资料为准。
 - [卡码笔记：提示词工程](https://notes.kamacoder.com/llm/app/prompt_engineering.html)和[示例、推理与反思](https://notes.kamacoder.com/llm/app/prompt_fewshot_cot_reflection.html)：任务组织与复杂任务拆解。
@@ -676,6 +685,5 @@ Content-Type: application/json
 - [高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)：当前天气工具的数据来源与接口字段。
 - [DeepSeek：工具调用](https://api-docs.deepseek.com/guides/tool_calls/)与[参考书实验 2-1 配套项目](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)：工具循环协议与实验组织。
 - 项目实现：[weather-agent](weather-agent/README.md) 的天气工具与消息循环、[prompt-labs](prompt-labs/README.md) 的两个离线实验和线上 DeepSeek 工具调用实验。
-- 阿里云 Thoughts《05-提示词工程》系列：[什么是 Prompt](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/69634fd5c71a890001a22a99)、[如何设计 Prompt](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/6963522974e40300010b7ce3)、[高阶 Prompt 优化方法](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/69635a5874e40300010b8039)、[结构化 Prompt 框架](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/696379933fb9180001f41360)、[Prompt 评测方法](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/69637a3e51b1440001126a05)、[理解 OpenAI API](https://thoughts.aliyun.com/workspaces/6963289eb0fc2e001bb052eb/docs/696387d23fb9180001f4186d)：框架命名、评测维度与高阶策略的**历史分类参考**；其中部分写法已被厂商最新指南替换（见 1.5 / 2.5 / 5.4），本篇示例均自行编写。
 - 厂商官方提示词指南（访问日期 2026-11-08；具体建议以所用模型的最新文档为准）：OpenAI [Reasoning best practices](https://platform.openai.com/docs/guides/reasoning-best-practices)、OpenAI [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)、OpenAI [Prompt caching](https://platform.openai.com/docs/guides/prompt-caching)、Anthropic [Claude prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)、Anthropic [Best practices for prompt engineering for 2026](https://claude.com/blog/best-practices-for-prompt-engineering)、Google [Gemini API: Prompt design strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies)：本篇关于“按模型分轨、评估前置、格式交给接口”的口径依据。
 - [AI Agent Guide：第4章 提示词工程](https://ai-agent-guide.xiaofuge.cn/chapters/ch04-prompt-engineering.html)（访问日期 2026-11-08）：把提示词按“信息怎么组织 / 让模型怎么想 / 输出怎么被检查”分层，以及模板化、版本管理、分区缓存等进阶工程路线的对照参考；本篇只借分层视角与提示词注入意识，其中的效果百分比、达标阈值、参数区间和具体型号均未采用。
