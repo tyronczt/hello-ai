@@ -19,13 +19,17 @@
 
 “参加前的清单”明确了用途，“只依据通知”限定了依据。回答应区分 13:50 集合与 14:00 开始，并保留报名要求；通知没写费用，就不能补成“免费”。**设计提示词，再用实际输出测试、修改和比较，就是提示词工程（Prompt Engineering）**；效果需要核对，[Google Cloud 的概览](https://cloud.google.com/discover/what-is-prompt-engineering?hl=zh-CN)也将重点放在设计与优化上。
 
-本篇先用活动通知练习任务表达，再解释 Token、上下文计算和生成策略；随后进入 Java 天气工具与固定数据实验，学习怎样组织消息、约束执行、检查结果和比较提示词效果。
+本篇按六节推进：第 1 节从一个群通知入手，把模糊要求写成可执行任务；第 2 节解释提示词究竟改变了什么——Token、输入预算、生成循环与采样；第 3 节看应用怎样用消息角色和长期规则把这些输入送进去；第 4 节进入 Java 天气工具与固定数据实验，学习组织消息、约束执行、分层验证；第 5 节用对照、重复观察和评分表判断改动有没有帮助；第 6 节用四个问题收尾。
 
-想先看工具循环，可以打开[三次模型调用的离线回放](prompt-demos/three-model-calls/index.html)。它无需 Key，展示一次历史天气任务的消息与工具记录，不代表提示词效果评估。
+想先看工具循环，可以打开[三次模型调用的离线回放](prompt-demos/three-model-calls/index.html)。它无需 Key，展示一次历史天气任务的消息与工具记录。
 
 ## 1. 先动手：把一句模糊要求变成可执行任务
 
+**一句话先说清：先把“要它做什么”说清，再谈措辞好不好。**
+
 ### 1.1 从结果倒推需要交代什么
+
+**一句话先说清：这份清单是给要去现场的人看的，字段就从这里来。**
 
 先确定拿到回答后要做什么。活动通知的读者准备去现场，因此需要的是参加前的清单：活动时间、集合地点、报名方式、携带物品，以及还要向组织者确认的事项。
 
@@ -39,15 +43,19 @@
 
 ### 1.2 一次只针对看得见的问题修改
 
+**一句话先说清：一次只改一个能被输出证明的问题。**
+
 如果清单不合用，先确认问题出在哪里，再改提示词。
 
 - **通知写了，回答漏了。**原文有“周五晚前在群里接龙报名”，清单却没写。可以补充“保留报名方式与截止要求”，再检查是否仍有遗漏。
 - **通知没写，回答补了。**原文没有结束时间，回答却写“16:00 结束”。需要明确“未说明的内容写未提供”，核对模型有没有继续推测。
 - **相关材料没进入输入。**通知被拆在多条群消息里，只提供了其中一条。应先补齐材料，再要求模型整理。
 
-同一句“写得更好”不能分别解决遗漏、编造和材料缺失。保留原提示词、输入与失败回答，修改后用相同材料核对；也要检查是否修好报名要求，却又漏掉携带物品。提示词长度应服务任务，相关讨论见[《Prompt越长越好吗？研究告诉你何时该停手》](https://mp.weixin.qq.com/s?__biz=MzI2NDU4OTExOQ==&mid=2247697464&idx=1&sn=809c710e2b0a2392b16ebb5635121d6d)。
+遗漏、编造和材料缺失是三类问题，各需各的修改。保留原提示词、输入与失败回答，修改后用相同材料核对；也要检查是否修好报名要求，却又漏掉携带物品。提示词长度应服务任务，相关讨论见[《Prompt越长越好吗？研究告诉你何时该停手》](https://mp.weixin.qq.com/s?__biz=MzI2NDU4OTExOQ==&mid=2247697464&idx=1&sn=809c710e2b0a2392b16ebb5635121d6d)。
 
 ### 1.3 用示例展示期望的处理方式
+
+**一句话先说清：给一组输入输出对照，比多写三条形容词有用。**
 
 规则写清后，如果模型仍混淆时间字段，可以给少量示例。下面只演示“集合时间”这一项，两个通知片段和输出都是教学示意：
 
@@ -61,7 +69,7 @@
 集合时间：未提供。
 ```
 
-第二条用于说明：开始时间不等于集合时间。这比再加一句“注意准确”更具体。示例只演示处理方法，不能当成本次通知的事实。
+第二条用于说明：开始时间不等于集合时间。这比再加一句“注意准确”更具体。示例只演示处理方法，不能当成本次通知的事实。（第 1.4 节会给出一份完整的五项清单，这里只取一个字段，是为了单独看清“有示例 / 没示例”的差别，不引入其他变量。）
 
 不提供示例通常称为 **zero-shot（零样本提示）**；给出少量输入与输出示例，通常称为 **few-shot（少样本提示）**。示例应对应当前任务，覆盖容易混淆或缺失的情况，并保持输出格式一致；还要留出没有进入示例的通知做检查，避免只测模型是否会复述样例。
 
@@ -70,6 +78,8 @@
 规则变化后也应同步复核示例。旧示例仍把缺失的集合时间写成开始时间，就会与新规则冲突；相关讨论见[《从Prompt到Harness，给反馈分类装上方向盘》](https://mp.weixin.qq.com/s?__biz=MzI2NDU4OTExOQ==&mid=2247697102&idx=1&sn=c5f8e6c86d98caed81f32bf357be22a4)。
 
 ### 1.4 给持续执行的任务定义完成和停止条件
+
+**一句话先说清：长任务要约定何时交付、何时停手。**
 
 整理一条通知，通常一轮就能结束。如果任务需要汇总多条通知、反复查询或自动修订，还要约定何时交付、何时停止。这些约定可以组织成一份**任务契约**：
 
@@ -86,6 +96,39 @@
 
 “分五项输出”规定形式，“五项有依据或标明缺失”规定完成条件，“逐项对照通知”规定检查方法。费用未写，可以在待确认事项中说明后交付；根本没有通知，或关键信息相互冲突，则需要先补充或澄清。
 
+前面把要求写成了契约。下面看契约的**产物**长什么样——同一份通知，两份清单：
+
+```text
+【A】
+活动时间：周日 14:00 开始；13:50 到社区活动室集合（集合不是开始时间）
+集合地点：社区活动室
+报名方式：周五晚前在群里接龙报名
+携带物品：几本闲置书
+待确认事项：结束时间未提供；是否收费未提供
+```
+
+```text
+【B】
+活动时间：周日 13:50—16:00
+集合地点：社区活动室
+报名方式：群里接龙
+携带物品：闲置书若干
+费用：免费
+```
+
+A 与 B 的差别不在文笔，在这四件事：
+
+| | A | B |
+|---|---|---|
+| 时间是否错位 | 14:00 开始、13:50 集合，分开写 | 把集合时间当成了开始时间 |
+| 缺失信息怎样处理 | 结束时间、费用标“未提供” | 补出 `16:00`、补出“免费” |
+| 完整性 | 五项都有交代 | 漏了截止要求（周五晚前）与待确认事项 |
+| 格式 | 五项分点 | 五项分点，但多出无依据的结论 |
+
+B 这类回答读起来比 A 更“完整”，这正是它危险的地方：**补全的动作看起来像在帮忙，实际是替组织者编了安排。**第 5.4 节的评分表会回到这两份清单上来。
+
+图 2 把刚才那七行连成了一条线，读的时候沿箭头走：先看目标，再看边界，最后落在验收和停止上。
+
 ![任务契约怎样把目标、边界、验收和停止条件连接起来](diagram/task-contract.svg)
 
 图 2：缺失项可以如实保留；缺少材料或发现关键冲突时，先说明情况，再决定是否继续。这与已经完成原任务是两种结果。
@@ -94,7 +137,9 @@
 
 ### 1.5 把刚才那些要素装进模板：结构化提示词
 
-前面已经明确用途、材料、约束、输出和检查标准。把这些内容分区保存，就形成了可复用的提示词模板。结构化的价值是便于检查、替换材料和维护规则。
+**一句话先说清：把条件分区存放，是为了以后能替换和检查。**
+
+前面已经明确用途、材料、约束、输出和检查标准。把这些内容分区保存，就形成了可复用的提示词模板。结构化的价值是便于检查、替换材料和维护规则。第 1.4 节的七项可以并入这五个分区，两者对应同一批内容：**目标**归到“任务与受众”，**材料**归到“材料与背景”，**约束**独立成区，**交付**归到“输出”，**完成条件 / 核查方法 / 停止条件**合并成“检查与停止”。合并后分类变粗，但更容易套模板；需要逐条核查时，仍可回到七项契约的写法。
 
 | 部分 | 活动通知中的内容 |
 |---|---|
@@ -121,7 +166,7 @@
 <notice>粘贴本次通知</notice>
 ```
 
-角色说明服务对象，任务说明怎样处理材料，格式说明交付形状。这里没有加入“资深专家”之类身份要求：本次需要的是忠实提取通知，而非创造新的活动安排。
+角色说明服务对象，任务说明怎样处理材料，格式说明交付形状。这里没有加入“资深专家”之类身份要求：本次需要的是忠实提取通知。示例只写了三个分区加材料：这个任务的检查要求已经写进“任务”里（“未写明的费用、结束时间等信息标‘未提供’”），不必单开一段。**分区数量按任务定，不是模板必须填满。**
 
 不同教程对结构的命名不同。[AI Agent Guide 的提示词工程章节](https://ai-agent-guide.xiaofuge.cn/chapters/ch04-prompt-engineering.html)将角色、指令、上下文、示例、格式和风格分开讨论；本篇按当前任务选取必要部分。简单任务可以合并，示例与风格要求按需增加，写满模板本身不能证明回答更好。
 
@@ -138,7 +183,7 @@
 
 **输出给程序时，再看接口约束。**如果活动清单要被 Java 解析，可以在模型支持时使用结构化输出接口，通过 JSON Schema 描述字段与类型。以 [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) 为例，需要按所用 API 配置 Schema 和严格模式；这不是所有厂商通用的一组参数。结构合规后仍须核对字段值是否来自通知。当前配套实验使用提示词和 Java 校验器，没有启用这类原生 Schema 约束。
 
-**长材料的组织也要分清目的。**把通知与规则分区，是为了区分资料和指令；让当前问题靠近相关材料，是为了便于使用上下文；缓存则关注可复用前缀。[Claude 提示词指南](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)与 [OpenAI 缓存文档](https://developers.openai.com/api/docs/guides/prompt-caching)讨论的侧重点不同，应按实际模型与接口安排，不能一概归为“越长越好”或“一律放开头”。
+**长材料的组织也要分清目的。**把通知与规则分区，是为了区分资料和指令；让当前问题靠近相关材料，是为了便于模型把问题与材料放在一起处理；缓存则关注可复用前缀。[Claude 提示词指南](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)与 [OpenAI 缓存文档](https://developers.openai.com/api/docs/guides/prompt-caching)讨论的侧重点不同，应按实际模型与接口安排，不能一概归为“越长越好”或“一律放开头”。
 
 这一节处理的是信息组织。接下来先解释它怎样改变模型输入，再讨论生成策略与多次调用；最后用实际结果判断这些调整是否有帮助。
 
@@ -147,6 +192,8 @@
 **一句话先说清：提示词改的是模型眼前的输入，不是模型本身。**
 
 ### 2.1 从文字到 Token
+
+**一句话先说清：模型看到的不是字，是一串编号。**
 
 模型先把文本编码成一串整数，再进行数值计算。**Token 是这套编码使用的单位，Token ID 是它在词表中的编号。**负责编码的是与模型配套的分词器（tokenizer）。
 
@@ -159,19 +206,40 @@
   → 嵌入表示：用编号查找向量，交给模型结合位置与上下文计算
 ```
 
-编号只是标识：相近的 ID 不代表相近的含义，切分也没有完成任务理解。模型计算时处理的是向量表示；生成时则逐步选择输出 Token，再由解码器将编号序列还原为文本。第 2.2、2.3 节分别展开生成循环和内部计算。
+编号只是标识：相近的 ID 不代表相近的含义。模型计算时处理的是向量表示；生成时则逐步选择输出 Token，再由解码器将编号序列还原为文本。第 2.2、2.3 节分别展开生成循环和内部计算。
 
 对写提示词，直接相关的是三件事：
 
-- **字数不等于 Token 数。**“不超过 200 字”是输出要求，`max_tokens` 一类参数限制的是输出 Token，二者不能直接换算。
-- **输入预算要看完整请求。**规则、通知、历史、工具定义与结果都可能占输入空间；应按所用服务的上下文规则为输入和输出留出空间。材料被截断，模型就没有那部分依据。
-- **改提示词，改变的是本次编码后的输入。**补上“费用未写明就标未提供”，会让模型在新的上下文条件下生成；这没有给通知补进真实费用，也没有更新模型参数。
+- **字数不等于 Token 数。**“不超过 200 字”是输出要求，`max_tokens` 一类参数限制的是输出 Token，两者是不同的单位。
+- **输入预算要看完整请求。**规则、通知、历史、工具定义与结果都可能占输入空间；应按所用服务对上下文窗口的规定（定义见本节末）为输入和输出留出空间。材料被截断，模型就没有那部分依据。
+- **改提示词，改变的是本次编码后的输入。**补上“费用未写明就标未提供”，会让模型在一次新的输入条件下生成；这没有给通知补进真实费用，也没有更新模型参数。
 
-准确的数量应使用目标模型对应的分词工具，或核对服务返回的用量；不要用固定的“一个汉字等于一个 Token”估算。
+准确的数量应使用目标模型对应的分词工具，或核对服务返回的用量；固定的“一个汉字等于一个 Token”只能当粗略感受。
+
+**输入预算要按完整请求算。**下面是一次真实运行的记录，同一个天气任务在三轮工具往返中的输入增长：
+
+| 轮次 | 消息 JSON 长度（UTF-16 单元） | 服务返回的输入 Token |
+|---|---|---|
+| 第 1 轮 | 584 | 779 |
+| 第 2 轮 | 1649 | 1070 |
+| 第 3 轮 | 1995 | 1153 |
+
+消息从 2 条增至 4 条、6 条，输入 Token 随之上升。两个数字属于不同单位：JSON 长度按字符算，Token 按模型的词表算，工具定义与 Chat Template 的控制标记也在占用输入空间。可以写成一个规划式：
+
+```text
+可用输入预算 ≈ 模型窗口 − 为输出预留的空间 − 协议与服务要求的余量
+本轮输入 = 固定规则 + 工具描述/Schema + 用户任务 + 选中的历史 + 本轮状态
+```
+
+这个式子用来安排容量，不替代服务端计数。第 04 篇会继续讨论窗口满了之后怎样取舍；本篇记住一点就够：**改提示词不只是改一段文字，还改变了这一次请求占用的输入空间**。
+
+顺带把“上下文”这个词固定下来：**这次请求送进模型、可供它计算的整个 Token 序列，就是这次生成看到的上下文**——包括系统规则、用户问题、选中的历史、工具定义与工具结果，不只是用户敲的那句话。模型一次能容纳的 Token 上限就是上下文窗口。提示词工程改的是这个序列里的一部分；上下文工程（第 04 篇）管的是这个序列怎样取舍与组织。
 
 ### 2.2 模型一步一步续写，而不是一次查出整篇答案
 
-**自回归模型每一步都根据已有输入和输出，计算下一个 Token 的候选分布。**
+**一句话先说清：整篇回答是一次一个 Token 接出来的。**
+
+自回归模型每一步都根据已有输入和输出，计算下一个 Token 的候选分布。
 
 对自回归语言模型，可以先把过程理解为三个动作：
 
@@ -197,7 +265,9 @@ $$
 
 ### 2.3 再往里看：模型怎样结合上下文
 
-**先计算上下文中的表示，再得到下一 Token 的分数。**
+**一句话先说清：每一步先算“看哪里”，再算“写什么”。**
+
+先计算上下文中的表示，再得到下一 Token 的分数。
 
 上一节把“根据输入计算下一步”当成一个整体。以常见的 **decoder-only Transformer**（生成时根据当前可见前文预测后续 Token 的一类架构）为例，可以继续拆开来看。先记住三个位置：Token ID 转成向量；注意力汇集上下文位置的信息；最后才计算候选 Token 的分数。
 
@@ -209,17 +279,19 @@ $$
 
 经过多头注意力、前馈网络等组件的多层变换后，最后的表示才被映射成各候选 Token 的分数，称为 **logits**。softmax 把这些分数转换成合计为 1 的概率，再由生成策略选择下一 Token。
 
+把图 4 的左半边当成第 2.2 节讲过的循环，右半边就是本节要拆开的“模型计算”：表示 → 汇集 → 打分。
+
 ![从 Token 表示到注意力和下一 Token 的简化计算链](diagram/transformer-attention.svg)
 
 图 4：展开图 3 的“模型计算”，不是另一套生成流程。先表示输入，再汇集上下文，经过多层变换后预测下一 Token。图中省略了部分网络细节，具体模型实现可能不同。注意力机制的来源见 [Transformer 原始论文](https://arxiv.org/abs/1706.03762)。
 
 回到活动通知：任务规则、通知和示例都参与了这些计算，所以它们可以影响模型怎样处理集合时间和未知费用。给出示例时，模型利用的是本次上下文中的对应关系；无关材料、冲突规则和过期示例也可能干扰结果。
 
-这解释了提示词为什么有用，也解释了为什么还要检查答案：改变输入只能影响生成，不能保证每条规则都被遵守。单个注意力权重也不足以证明某次回答为何正确或错误。
+这解释了提示词为什么有用，也解释了为什么还要检查答案：改变输入只能影响生成，无法保证每条规则都被遵守。
 
 ### 2.4 采样参数能改变表达，不能补充事实
 
-**采样参数改变候选的选择概率，不能为缺失信息补出依据。**
+**一句话先说清：旋钮调的是选谁，不是有没有依据。**
 
 模型算出候选分数后，生成策略会影响如何选择。温度通常用于调整分布的集中程度；top-p 通常按概率从高到低累计，保留达到阈值的一组候选，再从中采样。不同模型服务的具体实现可能不同，参数也未必都开放。
 
@@ -229,7 +301,7 @@ $$
 >
 > 把一步生成缩成三个候选，以人工 logits `[2, 1, 0]` 为基线。为便于讨论事实错误，把 A 视为“补写没有依据的信息”，B 视为“保留未知”，C 视为“请求补充材料”。这只是合成的候选语义，不是真实模型测得的分数。实验不改变提示词，也不执行随机抽样，而是检查选择参数改变了什么。
 >
-> **第一步，先预测再揭晓。**固定分数，把温度从 `1` 分别改为 `0.5`、`2`。记录 A 的概率会怎样变化、最高分位置会不会变化。配套程序默认只显示输入和问题；写下 `--predict` 并加 `--reveal` 才显示分布，让读者先判断，再用计算修正解释。
+> **第一步，先预测再揭晓。**固定分数，并显式把阈值设为 `--top-p=1`，再把温度从 `1` 分别改为 `0.5`、`2`。**不加 `--top-p=1` 会看不准**：程序默认 `top-p=0.8`，会先筛掉尾部候选，那时输出里“所选温度 + top-p”那一行是两个参数叠加的结果，`A` 可能直接显示 `100%`，很容易被误读成“温度让 A 更集中”。记录 A 的概率会怎样变化、最高分位置会不会变化。配套程序默认只显示输入和问题；写下 `--predict` 并加 `--reveal` 才显示分布，让读者先判断，再用计算修正解释。
 >
 > **第二步，只改变阈值。**恢复温度 `1`，比较 `top-p=0.8` 与 `0.95`，观察保留几个候选、剩余概率怎样重新归一化。再试 `0.1` 与 `1`。分数、温度、阈值均可通过参数指定；探索输入不参与固定回归断言。
 >
@@ -238,32 +310,38 @@ $$
 > <details>
 > <summary>完成预测后再看：默认分数的计算结果</summary>
 >
-> `T=1` 时 A/B/C 约为 `66.52% / 24.47% / 9.00%`；`T=0.5` 时 A 约为 `86.68%`，`T=2` 时约为 `50.65%`。正温度缩放保留这组分数的排序。温度为 1、top-p 为 0.8 时保留 A、B，重新归一化后约为 `73.11% / 26.89% / 0%`；阈值为 0.95 时保留三项。
+> 下表给的是**筛选前**的分布（`--top-p=1`）。若用默认 `top-p=0.8`，温度 0.5 时 A 会被筛到 `100%`，那是筛选造成的，不是温度造成的。`T=1` 时 A/B/C 约为 `66.52% / 24.47% / 9.00%`；`T=0.5` 时 A 约为 `86.68%`，`T=2` 时约为 `50.65%`。正温度缩放保留这组分数的排序。温度为 1、top-p 为 0.8 时保留 A、B，重新归一化后约为 `73.11% / 26.89% / 0%`；阈值为 0.95 时保留三项。
 >
 > </details>
 >
-> [SamplingLab.java](prompt-labs/SamplingLab.java) 中，`main → parseOptions` 是探索入口，`softmax / topP / argmax` 是计算实现。`--self-check` 另行运行 10 项固定数值与边界检查，包括共同平移分数和非法输入。减最大值避免本例指数溢出，属于数值实现问题，不是提示词技巧。操作与记录模板见 [prompt-labs](prompt-labs/README.md)。实验说明参数如何改变候选机会；内容是否有依据，仍须核对原始材料。
+> [SamplingLab.java](prompt-labs/SamplingLab.java) 中，`main → parseOptions` 是探索入口，`softmax / topP / argmax` 是计算实现。`--self-check` 另行运行 10 项固定数值与边界检查，包括共同平移分数和非法输入。减最大值避免本例指数溢出，这属于数值实现问题。操作与记录模板见 [prompt-labs](prompt-labs/README.md)。实验说明参数如何改变候选机会；内容是否有依据，仍须核对原始材料。
 
 ### 2.5 让模型多想几步：从一条链到多次调用
 
-生成文字与解决多步问题并不是同一件事。整理通知时，直接提取字段可能就够了；核对多份安排是否冲突，则可能需要先比较时间和条件，再给结论。是否增加推理步骤，应先看任务和所用模型。
+**一句话先说清：要模型多想几步，改的是调用方式，不只是措辞。**
+
+生成文字与解决多步问题是两件事。整理通知时，直接提取字段可能就够了；核对多份安排是否冲突，则可能需要先比较时间和条件，再给结论。是否增加推理步骤，应先看任务和所用模型。
 
 **单次调用中的步骤要求。**思维链提示（CoT）通过指令或示例，引导模型生成中间推导，再给结论。对通知任务，可以要求“先核对开始与集合时间，再列清单”。写出来的步骤仍可能出错，也不等于模型内部计算过程的完整记录。
 
-[OpenAI 推理模型指南](https://developers.openai.com/api/docs/guides/reasoning-best-practices)建议对其推理模型使用简洁、直接的要求，通常不必再添加“think step by step”，并先尝试零样本。其他模型应按各自指南与实测决定，不能因为支持 thinking，就推断所有步骤提示都有效或都无效。
+[OpenAI 推理模型指南](https://developers.openai.com/api/docs/guides/reasoning-best-practices)建议对其推理模型使用简洁、直接的要求，通常不必再添加“think step by step”，并先尝试零样本。其他模型应按各自指南与实测决定；支持 thinking 也不说明所有步骤提示同样有效。
 
 **多条候选和多步交互。**当应用为同一任务多次采样、比较路径、安排修订或调用工具时，变化已经超出一段提示词：
 
 | 做法 | 怎样组织过程 | 主要限制 | 本项目中的对应范围 |
 |---|---|---|---|
-| 自我一致性 | 为同一问题生成多条推导，汇总最终答案 | 需要定义答案等价与汇总规则；多数结果也可能一起错 | `--repeats` 只保留重复观察，没有投票或汇总机制 |
+| 自我一致性 | 为同一问题生成多条推导，汇总最终答案 | 需要定义答案等价与汇总规则；多数结果也可能一起错 | `--repeats` 保留重复观察与逐轮对照，没有投票或汇总机制 |
 | ToT 思维树 | 生成多个中间方案，评价后搜索或回退 | 依赖有效的评价与搜索控制，成本随候选增加 | 没有实现 |
 | 反思与修订 | 先生成候选，再按标准批评和修订 | 同一模型可能漏掉自己的错误，需要外部依据和停止条件 | 没有自动修订循环 |
 | ReAct | 在推理、行动与环境反馈之间交替推进 | 需要工具、状态与预算控制 | 天气回放可观察工具请求与回填，不据此宣称实现了完整 ReAct 方法 |
 
 自我一致性、思维树和 ReAct 的原始定义分别见[自我一致性论文](https://arxiv.org/abs/2203.11171)、[ToT 论文](https://arxiv.org/abs/2305.10601)与 [ReAct 论文](https://arxiv.org/abs/2210.03629)。这些方法并不保证改进当前任务；多次调用会增加成本，还可能重复错误。
 
+**重复观察能看见什么。**同一段提示词、同一条证据，跑两次未必给同一个候选。用 `--mode=compare --case=not-found --repeats=2`，`comparison.md` 的“预测与原始候选”一节会把每轮的 basic / rules / examples 并排列出，并标出“与本次 basic 相比”的文本相等与 JSON 结构相等。两轮里如果 basic 的候选不同，“自我一致性”要解决的问题就摆在眼前了：同一套输入下，模型的选择并不稳定。多数投票能压低随机波动，但**共同的错误会被一起投出来**，所以它不能替代证据核对。本项目只做了重复观察，没有投票与汇总机制——这一步能演示动机，不能复现论文效果。
+
 实践时先写清目标、依据与输出，保存基线；每次只加入一个步骤要求或一种组织方法，用同一组任务比较收益与退化。第 1.4 节的停止条件在这里尤其重要：模型自称“还要检查”不意味着应该无限调用。第 5.4 节再讨论如何评价。
+
+**本节边界。**这一节讲的三件事都不保证回答正确：Token 数不等于字数，同一句话在不同模型上的切分也可能不同；生成循环让每一步只看已有前文，整篇未必自洽；采样参数只改变候选机会，依据仍要回原始材料核对。上面出现的具体概率都是固定分数下的计算结果，不是任何模型的准确率。
 
 ## 3. 应用怎样把规则交给模型
 
@@ -273,9 +351,9 @@ $$
 
 ### 3.1 用消息角色保留来源和用途
 
-**消息角色由应用设置，用于标记来源和用途。**
+**一句话先说清：先看这条消息是哪一种角色，再问它写了什么。**
 
-在聊天界面里，我们直接填写的是用户消息。应用还可能提供系统规则、工具定义、历史消息和工具结果，它们承担不同职责：
+消息角色由应用设置，用于标记来源和用途。在聊天界面里，我们直接填写的是用户消息。应用还可能提供系统规则、工具定义、历史消息和工具结果，它们承担不同职责：
 
 | 部分 | 天气场景中的内容 | 职责 |
 |---|---|---|
@@ -294,7 +372,7 @@ $$
 
 开发项目时，构建命令、代码约定和检查方法往往需要反复说明。可以把它们保存为长期规则。`AGENTS.md` 是一种给编码 Agent 提供项目说明的开放约定，没有强制字段，具体内容见[官方说明](https://agents.md/)。
 
-下面是可用于天气模块的精简示意，并不表示模块已配置这个文件：
+下面是可用于天气模块的精简示意；这个模块本身没有配置该文件：
 
 ```markdown
 # AGENTS.md
@@ -308,7 +386,7 @@ $$
 - 源码移动时检查文档链接；交付时说明改动和验证范围。
 ```
 
-这份文件指导**帮助我们开发项目的编码 Agent**。天气应用调用模型时，则由自己的 Java 代码组装规则、问题和工具结果。两个场景的输入由不同程序组织，不能因为项目里有 `AGENTS.md`，就认为天气模型已经收到了它。
+这份文件是写给**协助我们开发这个项目的编码 Agent** 的规则。天气应用调用模型时，则由自己的 Java 代码组装规则、问题和工具结果。两个场景的输入由不同程序组织，不能因为项目里有 `AGENTS.md`，就认为天气模型已经收到了它。
 
 ![项目长期规则与天气运行规则分别怎样进入模型](diagram/persistent-rules-and-runtime.svg)
 
@@ -317,6 +395,8 @@ $$
 长期规则保留跨任务成立的约定，本次的目标、范围和完成条件放在任务说明里。当前进度、设计决策、排障经验可以另存，并在相关任务中读取。[centminmod 的配置](https://github.com/centminmod/my-claude-code-setup/blob/master/CLAUDE.md)为这些资料标注了读取时机。文件拆分与过期复核留到上下文工程篇展开。
 
 ## 4. 回到项目：让天气助手回答“明天要不要带伞”
+
+**一句话先说清：前几节的材料由人提供，这一节的数据得从工具取。**
 
 活动通知的事实由用户提供。下面换到天气查询：未来预报需要从外部服务取得，规则、工具执行和结果核验就都进入了同一条流程。
 
@@ -327,6 +407,8 @@ $$
 用户问：“北京市明天的天气怎样？请说明降水概率，并给出带伞建议、目标日期和来源。”模型不能仅凭季节常识回答，因为这里需要指定地点和日期的预报。项目提供城市检索与天气查询：先根据城市找到候选地点，再用实际返回的地点 ID 查询天气，依据当地时间确定目标日期，并从对应日期的数据中组织答案。
 
 当前实现使用高德 Web 服务，工具只查询预报，不提供实况。高德预报接口没有降水概率字段，适配层把 `daily[].precipitationProbability` 保留为 `null`。所以这个问题的合格回答应明确说明概率未知，再依据查到的天气文字给出带条件的建议。接口字段见[高德天气文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)，适配规则见 [WeatherTools.java](weather-agent/src/main/java/example/weather/tool/WeatherTools.java)。
+
+图 6 把这条链上的三个责任方分开画：提示词决定模型提出什么请求，Java 决定这个请求能不能执行，高德决定回填什么数据。
 
 ![天气 Agent 的提示词、工具执行与结果核验](diagram/weather-tool-boundary.svg)
 
@@ -348,7 +430,7 @@ $$
 
 ### 4.2 看三种提示词的差别
 
-**每项任务选择一版提示词；三版内容依次增加规则和示例。**
+**一句话先说清：三版提示词是三个独立方案，不是三个步骤。**
 
 打开 [WeatherPrompts.java](weather-agent/src/main/java/example/weather/agent/WeatherPrompts.java)，项目已有三种模式：
 
@@ -361,17 +443,21 @@ return switch (mode) {
 };
 ```
 
-`BASE` 已有共同边界，包括只引用本次工具结果、未知如实说明、地点不明确时追问；`RULES` 再增加处理顺序、停止条件和输出组织；`EXAMPLES` 在此基础上演示缺城市、服务失败和概率为 `null` 三种处理方式。
+`BASE` 已有共同边界，包括只引用本次工具结果、未知如实说明、地点不明确时追问；`RULES` 再增加处理顺序、停止条件和输出组织；`EXAMPLES` 在此基础上演示缺城市、服务失败和概率为 `null` 三种处理方式（图 7 只摘录其中“缺城市”一条，三条完整内容见 [WeatherPrompts.java](weather-agent/src/main/java/example/weather/agent/WeatherPrompts.java) 的 `EXAMPLES` 常量）。
 
 ![basic、rules、examples 三种提示词方案分别使用 BASE、BASE 加 RULES、BASE 加 RULES 加 EXAMPLES](assets/03-prompt-engineering/prompt-versions.png)
 
-图 7：三种方案展示提示词内容的累加关系，效果需要分别运行后核对。图中使用 CLI 参数 `--prompt` 和 `--context`；第 5.1 节通过 HTTP 请求中的 `promptMode` 和 `contextMode` 选择对应配置，例如 `--prompt=rules` 对应 `"promptMode": "rules"`，`--context=full` 对应 `"contextMode": "full"`。
+图 7：三种方案展示提示词内容的累加关系；图只摘录每条常量的一部分，效果需要分别运行后核对。
+
+图中用的是 CLI 参数 `--prompt` 和 `--context`。第 5.1 节改用 HTTP 请求里的 `promptMode` 和 `contextMode`，例如 `--prompt=rules` 对应 `"promptMode": "rules"`，`--context=full` 对应 `"contextMode": "full"`。两条入口最后落到同一个开关函数：`WeatherCli` 把 `--prompt` 交给 `WeatherAgent`，HTTP 请求的 `promptMode` 走同一处，都由上面代码块里的 `WeatherPrompts.of(mode)` 决定。名字不同，行为是同一套。
 
 `rules` 一次增加了多项内容，因此比较结果只能先归于整套方案，不能直接归因于某一句规则。`examples` 中的工具结果只是演示文本。
 
 ### 4.3 提示词之外，代码还做了什么
 
-**提示词表达任务与规则，Java 检查工具能否执行。**
+**一句话先说清：提示词管“要什么”，Java 管“能不能给”。**
+
+提示词表达任务与规则，Java 检查工具能否执行。
 
 在 [WeatherAgent.java](weather-agent/src/main/java/example/weather/agent/WeatherAgent.java) 中，`WeatherPrompts.of(promptMode)` 提供固定规则，`question` 保留本次问题，工具回调另行注册。[WeatherContext.java](weather-agent/src/main/java/example/weather/agent/WeatherContext.java) 再把这两种文本分别组装为消息：
 
@@ -382,6 +468,8 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 当前项目直接使用 Java 常量，未从 `AGENTS.md` 读取应用规则。修改常量后，需要重新构建并重启服务，再从新报告确认发送的消息已经变化。
 
 工具请求交给 Java 执行前，仍要经过参数和预算检查。例如，`getWeather(locationId)` 只接受本次搜索登记的地点 ID。可由代码确定的边界，交给程序执行；模型负责理解问题、处理歧义和组织回答。
+
+**生成参数也由配置固定，不在提示词里。**天气应用自己的模型配置在 `application.yml`：`deepseek-flash`、温度 `0`、`max-tokens: 2048`、`thinking: disabled`，请求超时 45 秒、不自动重试。第 5.3 节的故障报告实验用的是另一套常量（`MAX_OUTPUT_TOKENS=1024`，另有 4 次请求、3 次工具调用的上限）。两处数字不同，是因为服务对象不同：应用按正常回答留出空间，实验按“最小可复现”控制成本。看到两个不同的上限时，先看是哪个入口在读哪份配置。
 
 ### 4.4 按结构、行为和结果三个层次验证
 
@@ -395,11 +483,13 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 | 行为 | 缺地点时是否追问、ID 是否来自本次检索、是否重复查询 |
 | 结果 | 答案的地点、日期、时区、字段和未知值是否与工具证据一致 |
 
+图 8 的三个方块对应上面表格的三行：结构、行为、结果。上一层通过不意味着下一层也通过。
+
 ![结构检查、行为检查和任务结果核验分别能证明什么](diagram/verification-levels.svg)
 
 图 8：三层检查各有范围。结构合规后仍要看行为，行为合规后仍要核对结果；与预报证据一致，也不代表未来天气一定如此。
 
-项目中的 `COMPLETED` 只表示模型产生了非空候选，可能是答案，也可能是追问。HTTP 200 和这个状态都不代表事实核验通过。应打开本次报告的 `rounds[].messages` 和 `toolEvents`，把候选与实际调用结果对照，而不是只检查答案是否写了“来源”。
+项目中的 `COMPLETED` 只表示模型产生了非空候选，可能是答案，也可能是追问。要判断是否真的答对，应打开本次报告的 `rounds[].messages` 和 `toolEvents`，把候选与实际调用结果对照。
 
 下面这个离线实验专门练“字段对不对”和“依据够不够”这两件事，不改提示词，也不联网。
 
@@ -421,6 +511,8 @@ this.prefix = List.of(new SystemMessage(system), new UserMessage(question));
 > 完整实现见 [EvidenceCheckLab.java](prompt-labs/EvidenceCheckLab.java)，操作与预测记录见 [prompt-labs](prompt-labs/README.md)。`--self-check` 单独执行 13 个固定案例：6 个候选字段、4 个证据适用性、2 个候选完整性、1 个输入边界。新增的是“证据地点不属于目标”。“拒绝错误候选”与“案例检查通过”可以同时出现；13 项是程序回归检查数，不是模型正确回答数。
 
 同样，要按检查的实际范围描述结论。`mvn -q -DskipTests compile` 只能证明编译通过。[agent-ready-template](https://github.com/adongwanai/agent-ready-template/blob/main/template/AGENTS.md)中的[入口检查脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/verify-harness.mjs)检查文件与引用，[任务校验脚本](https://github.com/adongwanai/agent-ready-template/blob/main/template/scripts/validate-specs.mjs)检查示例 JSON 的 Schema；这些结构检查也不能替代业务验收。
+
+**本节边界。**分支表覆盖的是已知失败类型，不是全部；`COMPLETED` 只表示拿到了非空候选；高德接口没有降水概率字段，这一项永远是 `null`，不是 `0`。工具能执行不等于答案正确，答案能解析不等于信息有依据。
 
 ## 5. 运行对照，检查提示词有没有帮助
 
@@ -476,7 +568,7 @@ Content-Type: application/json
 
 ### 5.3 实验 3-3：用线上 DeepSeek 观察工具调用与提示词差异
 
-**固定证据与评价契约，可以减少对照中的混杂因素。**
+**一句话先说清：把会变的东西换成固定报告，才看得清三种方案的差别。**
 
 前面的天气请求使用实时数据，不便排除预报变化。这里改用固定故障报告，让 Java 客户端调用线上 DeepSeek，接收工具请求、执行本地函数并回填结果，再观察三种提示词面对同一证据时的行为。这里的“线上”指调用远程模型服务，不是 weather-agent 部署上线，该项目目前也尚未发布线上。组织方式借鉴[《深入理解 AI Agent》实验 2-1](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)；工具协议参照 [DeepSeek 官方说明](https://api-docs.deepseek.com/guides/tool_calls/)。
 
@@ -514,11 +606,9 @@ Content-Type: application/json
 入口是 [DeepSeekPromptLab.java](weather-agent/src/main/java/example/weather/lab/DeepSeekPromptLab.java)，使用 JDK 21 和天气模块已有的 Jackson 依赖，不启动 Spring、不需要高德 Key。环境配置、IDEA 与 PowerShell 命令集中在 [实验讲义](prompt-labs/README.md#实验-3-3线上-deepseek-调用与对照)，按以下顺序完成：
 
 1. **服务检查。**`--mode=check` 请求模型列表。`CHECKED` 表示取得合法列表；模型未列出时仍为 `passed=false`，先解决访问与配置。
-2. **普通回答。**`--mode=chat` 不注册工具。检查 `runs[0].rounds[0].request.messages` 中 `role=system/user` 两条消息，再读 `response.choices[0].message.content`。可用 `--system` 改变表达要求，问题保持不变；这里只检查正常结束的非空文本，内容质量由读者判断。
-3. **工具往返。**`--mode=tools --case=unknown --prompt=rules`。沿报告确认模型请求编号 → Java 整批预检 → 实际工具事件 → 原 assistant 消息和匹配的 `tool_call_id` 回填 → 最终候选。一次合法工具往返使消息从 2 条增至 4 条；实际轨迹以报告为准。非法批次整体拒绝。
+2. **普通回答。**`--mode=chat` 不注册工具。在 `runs[0].rounds[0].request.messages` 里看 `role=system` 与 `user` 两条消息，再读 `response.choices[0].message.content`；这里只确认存在正常结束的非空文本。
+3. **工具往返。**`--mode=tools --case=unknown --prompt=rules`。沿报告走一遍：模型请求编号 → Java 整批预检 → 工具事件 → assistant 消息与 `tool_call_id` 回填 → 最终候选。一次合法往返使消息从 2 条增至 4 条，非法批次整体拒绝。
 4. **提示词比较。**`--mode=compare --case=not-found --repeats=1 --predict=你的预测`。读取同目录的 `comparison.md`：它并排列出提示词增加内容、模型/工具次数、执行状态、错误项和实际候选，并保留预测。原始请求与成功响应仍在 `report.json`，可检查到底改变了哪段系统消息。
-
-工具核验分开检查 `TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS`。没有查询而猜中字段也不通过；JSON 字段顺序或空白不同可以通过结构比较。恢复时间未知必须为 JSON `null`，不能替换成 `0` 或字符串“未提供”；这与第 1 节面向人的活动清单属于不同交付格式。
 
 #### 5.3.3 根据结果修正解释
 
@@ -528,13 +618,17 @@ Content-Type: application/json
 
 比较表的分母只包含已运行任务。三项均通过时，记录“本样本未观察到契约通过情况的差异”，再看答案和调用是否不同；没有差异也是有效观察。`comparison.md` 分别报告文本相等和 JSON 结构相等，避免把排版差异当成事实差异。服务失败后未执行的方案不计成失败，更不能用“至少跑出一次差异”筛选记录。
 
-需要重复观察时，可设 `--repeats=2` 或 `3`。每项任务最多 4 次模型请求、3 次工具执行；一次比较最多 12 次生成请求，3 次重复最多 36 次，每次请求超时 45 秒、不自动重试。调用可能产生线上用量，实际成本查看服务返回的 `usage`；耗时、Token 数及固定顺序的缓存效应不单独证明质量改善。
+需要重复观察时用 `--repeats=2` 或 `3`。每项任务最多 4 次模型请求、3 次工具执行；一次比较 12 次生成请求，3 次重复 36 次，每次超时 45 秒、不自动重试。实际用量看服务返回的 `usage`；耗时与 Token 数不单独证明质量改善。
 
 再做一组有针对性的修改：固定 `unknown / rules`，保存原报告，只移除“未知值保留 null”规则，**重新编译**后再运行；核对实际请求中的规则已改变。随后用 `not-found` 或 `failure` 检查是否退化。`RULES` 同时参与 examples 拼接，要明确比较对象；恢复源码后也需重新编译。
+
+三项检查（`TOOL_EVIDENCE`、`ANSWER_JSON`、`ANSWER_FIELDS`）分别对应第 4.4 节的行为、结构、结果三层：没有查询而猜中字段不通过；JSON 字段顺序或空白不同可以通过结构比较；恢复时间未知必须为 JSON `null`，不能写成 `0` 或“未提供”。
 
 常见错误码与完整运行步骤见[实验讲义](prompt-labs/README.md#失败时怎样定位)。[本机协议检查](prompt-labs/VALIDATION.md)使用回环替身验证客户端，其通过只能证明覆盖的程序行为。线上提示词表现需要用实际模型报告核对；没有 Key 时可先完成历史回放与离线实验，不能把替身输出当作真实模型结果。
 
 ### 5.4 怎样算“更好”：给提示词打分
+
+**一句话先说清：先定义什么叫“更好”，再去比。**
 
 前面给出了单次观察和固定数据对照的方法。要判断一版提示词是否值得保留，还要先定义成功标准，并准备一组任务；单次回答顺眼，不能说明换到其他输入仍然合格。
 
@@ -559,6 +653,8 @@ Content-Type: application/json
 
 单独给一份答案评分，说明它符合哪些标准；把同一通知的 A/B 两份答案隐去版本名称后比较，帮助判断哪一版更合用。逐题记录由对变错、由错变对的情况，比只看平均分更容易发现退化。评分表是建议的人工方法，配套代码没有实现它。
 
+先用第 1.4 节的两份清单练这张表：`A` 在四个维度上都可以给高分，`B` 在准确性（时间错位、费用编造）与完整性（漏两项）上应当扣分；格式上两者接近，说明**格式合规不等于内容合格**。
+
 **程序核验适合明确的契约。**第 5.3 节可分别检查本次工具依据、JSON 格式和五个字段：缺少查询、字段缺失、未知值被补写，是不同错误。给人看的活动清单还要检查时间含义、信息取舍与可读性，不能只看字符串是否相同。若使用 ROUGE、BERTScore 等参考文本指标，也要明确指标衡量的是文本重合或语义相似，不能把相似度直接当成事实正确率。
 
 **模型裁判需要校准。**可以让另一个模型按明确维度给出理由与分数，再用人工判断过的样本检查一致性。[MT-Bench 与 Chatbot Arena 论文](https://arxiv.org/abs/2306.05685)讨论了位置、冗长和自我偏好等偏差。交换 A/B 顺序、核对具体理由并保留人工复核，能帮助发现偏差；裁判模型本身仍可能出错。
@@ -568,6 +664,8 @@ Content-Type: application/json
 本节讲评价方法。离线数值计算、字段核验和本机协议断言分别验证其覆盖的程序行为，不是完整的提示词质量评估。本项目没有实现模型裁判或自动提示词优化，单次天气历史也不能替代任务集上的比较。
 
 ## 6. 写完提示词，再检查四件事
+
+**一句话先说清：写完提示词，还要回头检查任务、证据、边界和成本。**
 
 1. 任务、材料和输出要求是否明确？缺失或冲突时怎样处理？
 2. 完成条件和停止条件是否具体？有什么证据能判断已经做到？
@@ -590,25 +688,37 @@ Content-Type: application/json
 
 ## 参考资料
 
-下列清单仅列公开资料；其余公开来源在对应段落就近链接。项目实现使用仓库内的相对链接。
+下列清单分四类；标 ★ 的条目正文已就近链接，此处只作集中索引。项目实现使用仓库内的相对链接。
 
-- [AWS：提示词是什么？](https://aws.amazon.com/cn/what-is/prompt/)
+**论文与原始研究**
+
+- ★ [Language Models are Few-Shot Learners](https://arxiv.org/abs/2005.14165)：输入示例与模型参数训练的研究背景。
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)：Transformer 和注意力机制的原始论文。
+- ★ [Self-Consistency](https://arxiv.org/abs/2203.11171)、[Tree of Thoughts](https://arxiv.org/abs/2305.10601)、[ReAct](https://arxiv.org/abs/2210.03629)：多条推导、路径搜索与推理行动交替的原始研究，不代表本项目已实现或复现其效果。
+- [Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena](https://arxiv.org/abs/2306.05685)：模型裁判与评价偏差。
+
+**厂商官方文档**（访问日期 2026-11-08；具体建议以所用模型的最新文档为准）
+
+- ★ OpenAI [Reasoning best practices](https://developers.openai.com/api/docs/guides/reasoning-best-practices)、★ [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、★ [Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)：本篇“按模型分轨、评估前置、格式交给接口”的口径依据。
+- ★ Anthropic [Claude prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)：清晰指令、示例与结构组织。
+- [Anthropic: Best practices for prompt engineering for 2026](https://claude.com/blog/best-practices-for-prompt-engineering)、[Google Gemini API: Prompt design strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies)：分节组织材料与指令的厂商口径。
+- ★ [Hugging Face：Tokenization algorithms](https://huggingface.co/docs/transformers/en/tokenizer_summary)、★ [Chat templates](https://huggingface.co/docs/transformers/en/chat_templating)：词表与子词编码、消息角色与模型输入格式。
+- ★ [高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)：当前天气工具的数据来源与接口字段。
+- ★ [DeepSeek：工具调用](https://api-docs.deepseek.com/guides/tool_calls/)：工具请求与回填的协议依据。
+
+**项目、模板与实践**
+
+- ★ [AGENTS.md 开放约定](https://agents.md/)：为编码 Agent 提供项目规则入口；具体读取方式取决于宿主工具。
+- ★ [awesome-goal-prompts：任务契约模板](https://github.com/majiayu000/awesome-goal-prompts/blob/main/templates/full-goal-template.md)：目标、约束、完成证据与停止条件。
+- ★ [centminmod：项目规则与记忆配置](https://github.com/centminmod/my-claude-code-setup/blob/master/CLAUDE.md)：长期资料按用途组织、按需读取的实践。
+- ★ [agent-ready-template](https://github.com/adongwanai/agent-ready-template)：规则、任务、契约、验证与证据的组织示例。
+- ★ [参考书实验 2-1 配套项目](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)：工具循环协议与实验组织。
+- [Anthropic 交互式提示词教程](https://github.com/anthropics/prompt-eng-interactive-tutorial)：通过分步练习学习指令与示例的用法。
+- 项目实现：[weather-agent](weather-agent/README.md) 的天气工具与消息循环、[prompt-labs](prompt-labs/README.md) 的两个离线实验和线上 DeepSeek 工具调用实验。
+
+**中文公开文章**
+
+- ★ [AWS：提示词是什么？](https://aws.amazon.com/cn/what-is/prompt/)
 - [Agent 资源汇总](https://tyron.me/posts/agent-resources)：本系列参考资源入口，具体引用以各原始资料为准。
 - [卡码笔记：提示词工程](https://notes.kamacoder.com/llm/app/prompt_engineering.html)和[示例、推理与反思](https://notes.kamacoder.com/llm/app/prompt_fewshot_cot_reflection.html)：任务组织与复杂任务拆解。
-- [Anthropic 交互式提示词教程](https://github.com/anthropics/prompt-eng-interactive-tutorial)：通过分步练习学习指令与示例的用法。
-- [Anthropic：Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)：清晰指令、示例与结构组织。
-- [Language Models are Few-Shot Learners](https://arxiv.org/abs/2005.14165)：输入示例与模型参数训练的研究背景。
-- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)：Transformer 和注意力机制的原始论文。
-- [Hugging Face：Tokenization algorithms](https://huggingface.co/docs/transformers/en/tokenizer_summary)：词表、子词编码与不同分词算法。
-- [Hugging Face：Chat templates](https://huggingface.co/docs/transformers/en/chat_templating)：消息角色与模型输入格式。
-- [AGENTS.md 开放约定](https://agents.md/)：为编码 Agent 提供项目规则入口；具体读取方式取决于宿主工具。
-- [awesome-goal-prompts：任务契约模板](https://github.com/majiayu000/awesome-goal-prompts/blob/main/templates/full-goal-template.md)：目标、约束、完成证据与停止条件。
-- [centminmod：项目规则与记忆配置](https://github.com/centminmod/my-claude-code-setup/blob/master/CLAUDE.md)：长期资料按用途组织、按需读取的实践。
-- [agent-ready-template](https://github.com/adongwanai/agent-ready-template)：规则、任务、契约、验证与证据的组织示例。
-- [高德天气查询文档](https://lbs.amap.com/api/webservice/guide/api/weatherinfo)：当前天气工具的数据来源与接口字段。
-- [DeepSeek：工具调用](https://api-docs.deepseek.com/guides/tool_calls/)与[参考书实验 2-1 配套项目](https://github.com/bojieli/ai-agent-book/blob/main/chapter2/local_llm_serving/README.md)：工具循环协议与实验组织。
-- 项目实现：[weather-agent](weather-agent/README.md) 的天气工具与消息循环、[prompt-labs](prompt-labs/README.md) 的两个离线实验和线上 DeepSeek 工具调用实验。
-- 厂商官方提示词指南（访问日期 2026-11-08；具体建议以所用模型的最新文档为准）：OpenAI [Reasoning best practices](https://platform.openai.com/docs/guides/reasoning-best-practices)、OpenAI [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)、OpenAI [Prompt caching](https://platform.openai.com/docs/guides/prompt-caching)、Anthropic [Claude prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices)、Anthropic [Best practices for prompt engineering for 2026](https://claude.com/blog/best-practices-for-prompt-engineering)、Google [Gemini API: Prompt design strategies](https://ai.google.dev/gemini-api/docs/prompting-strategies)：本篇关于“按模型分轨、评估前置、格式交给接口”的口径依据。
-- [Self-Consistency](https://arxiv.org/abs/2203.11171)、[Tree of Thoughts](https://arxiv.org/abs/2305.10601)、[ReAct](https://arxiv.org/abs/2210.03629)：多条推导、路径搜索与推理行动交替的原始研究，不代表本项目已实现或复现其效果。
-- [Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena](https://arxiv.org/abs/2306.05685)：模型裁判与评价偏差。
-- [AI Agent Guide：第4章 提示词工程](https://ai-agent-guide.xiaofuge.cn/chapters/ch04-prompt-engineering.html)（访问日期 2026-11-08）：把提示词按“信息怎么组织 / 让模型怎么想 / 输出怎么被检查”分层，以及模板化、版本管理、分区缓存等进阶工程路线的对照参考；本篇只借分层视角与提示词注入意识，其中的效果百分比、达标阈值、参数区间和具体型号均未采用。
+- ★ [AI Agent Guide：第4章 提示词工程](https://ai-agent-guide.xiaofuge.cn/chapters/ch04-prompt-engineering.html)（访问日期 2026-11-08）：把提示词按“信息怎么组织 / 让模型怎么想 / 输出怎么被检查”分层；本篇只借分层视角与提示词注入意识，其中的效果百分比、达标阈值、参数区间和具体型号均未采用。

@@ -35,12 +35,16 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java
 默认只显示人工分数和问题。候选 A/B/C 的语义是假设的“编造时间 / 保留未知 / 请求材料”，不是从真实模型取出的 Token。分数同为 `[2,1,0]`，分别预测并运行：
 
 ```powershell
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --temperature=0.5 --predict=填写你的预测 --reveal
-java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --temperature=2 --predict=填写你的预测 --reveal
+java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --temperature=0.5 --top-p=1 --predict=填写你的预测 --reveal
+java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --temperature=2 --top-p=1 --predict=填写你的预测 --reveal
 java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --top-p=0.95 --predict=填写你的预测 --reveal
 ```
 
-一次只改变主要因素：温度实验保持 top-p 不变，重点比较筛选前分布；top-p 实验固定温度，比较筛选后分布。再用 `--logits=0,2,1` 与 `--logits=0,0,0`，检查原解释在最高分换位、并列时是否成立。
+一次只改变主要因素：温度实验显式写 `--top-p=1`（关闭筛选），只看温度对筛选前分布的作用；top-p 实验固定温度，比较筛选后分布。
+
+**`--top-p=1` 不能省。**程序默认 `top-p=0.8`，温度 `0.5` 时 A 的筛选后概率会被推到 `100%`，那一行数字来自筛选，不是温度。加上 `--top-p=1` 后，“所选温度（未筛选）”与“所选温度 + top-p”两行数值相同，温度的效果才看得清。
+
+再用 `--logits=0,2,1` 与 `--logits=0,0,0`，检查原解释在最高分换位、并列时是否成立。
 
 | 选项 | 默认值与约束 |
 |---|---|
@@ -53,7 +57,7 @@ java '-Dfile.encoding=UTF-8' '-Dstdout.encoding=UTF-8' SamplingLab.java --top-p=
 <details>
 <summary>运行后核对：默认分数的观察</summary>
 
-T=1 时 A/B/C 约为 0.6652/0.2447/0.0900；T=0.5 时 A 约为 0.8668；T=2 时约为 0.5065。温度为 1、top-p=0.8 时保留 A、B；top-p=0.95 时三项均保留。全部分数相等时，正温度变化不会制造偏好；argmax 并列取原顺序第一项。
+这里的数值都是 `--top-p=1` 下的筛选前分布：T=1 时 A/B/C 约为 0.6652/0.2447/0.0900；T=0.5 时 A 约为 0.8668；T=2 时约为 0.5065。若用默认 top-p=0.8，温度为 1 时保留 A、B；top-p=0.95 时三项均保留。全部分数相等时，正温度变化不会制造偏好；argmax 并列取原顺序第一项。
 
 程序输出“概率变化”来自本次输入的实际计算，不套用默认结果。降低温度若强化了错误候选，不能称为事实改善。以后修改提示词时，应先补足材料与缺口规则，再决定表达的随机性。
 
